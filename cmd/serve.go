@@ -132,7 +132,34 @@ func setupHTTPServer(cfg *config.Config, emailController *controller.EmailContro
 	e := echo.New()
 	e.HideBanner = true
 
-	e.Use(echomiddleware.Logger())
+	e.Use(echomiddleware.RequestLoggerWithConfig(echomiddleware.RequestLoggerConfig{
+		LogURI:       true,
+		LogStatus:    true,
+		LogMethod:    true,
+		LogRemoteIP:  true,
+		LogLatency:   true,
+		LogUserAgent: true,
+		LogError:     true,
+		HandleError:  true,
+		LogValuesFunc: func(c echo.Context, v echomiddleware.RequestLoggerValues) error {
+			fields := logrus.Fields{
+				"remote_ip":  v.RemoteIP,
+				"host":       v.Host,
+				"method":     v.Method,
+				"uri":        v.URI,
+				"status":     v.Status,
+				"latency":    v.Latency.String(),
+				"latency_ns": v.Latency.Nanoseconds(),
+				"user_agent": v.UserAgent,
+			}
+			entry := logrus.WithFields(fields)
+			if v.Error != nil {
+				entry = entry.WithError(v.Error)
+			}
+			entry.Info("http_request")
+			return nil
+		},
+	}))
 	e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.CORS())
 

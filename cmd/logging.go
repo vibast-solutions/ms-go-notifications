@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/vibast-solutions/ms-go-notifications/config"
@@ -19,8 +20,8 @@ func configureLogging(cfg *config.Config) error {
 		return fmt.Errorf("invalid LOG_LEVEL %q: %w", cfg.LogLevel, err)
 	}
 	logrus.SetLevel(parsed)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true,
+	logrus.SetFormatter(&logrus.JSONFormatter{
+		TimestampFormat: time.RFC3339Nano,
 	})
 	return nil
 }
