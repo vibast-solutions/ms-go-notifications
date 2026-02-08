@@ -15,11 +15,11 @@ import (
 type Server struct {
 	types.UnimplementedNotificationsServiceServer
 	emailService *service.EmailService
-	producer     *queue.EmailProducer
+	producer     queue.EmailPublisher
 }
 
 // NewServer constructs a gRPC server handler.
-func NewServer(emailService *service.EmailService, producer *queue.EmailProducer) *Server {
+func NewServer(emailService *service.EmailService, producer queue.EmailPublisher) *Server {
 	return &Server{emailService: emailService, producer: producer}
 }
 

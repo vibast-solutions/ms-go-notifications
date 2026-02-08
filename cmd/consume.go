@@ -10,13 +10,11 @@ import (
 
 	"github.com/vibast-solutions/ms-go-notifications/app/lock"
 	"github.com/vibast-solutions/ms-go-notifications/app/preparer"
-	"github.com/vibast-solutions/ms-go-notifications/app/provider"
 	"github.com/vibast-solutions/ms-go-notifications/app/queue"
 	"github.com/vibast-solutions/ms-go-notifications/app/repository"
 	"github.com/vibast-solutions/ms-go-notifications/app/service"
 	"github.com/vibast-solutions/ms-go-notifications/config"
 
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
@@ -51,11 +49,6 @@ func runConsumeEmails(_ *cobra.Command, args []string) {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(), awsconfig.WithRegion(cfg.AWSRegion))
-	if err != nil {
-		log.Fatalf("Failed to load AWS configuration: %v", err)
-	}
-
 	db, err := sql.Open("mysql", cfg.MySQLDSN)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -81,8 +74,12 @@ func runConsumeEmails(_ *cobra.Command, args []string) {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
 
+	emailProvider, err := buildEmailProvider(cfg)
+	if err != nil {
+		log.Fatalf("Failed to build email provider: %v", err)
+	}
+
 	emailPreparer := preparer.NewChain(preparer.NewRawPreparer(cfg.SESSourceEmail))
-	emailProvider := provider.NewSESProvider(awsCfg, cfg.SESSourceEmail)
 	emailHistory := repository.NewEmailHistoryRepository(db)
 	locker := lock.NewRedisLocker(rdb)
 	emailService := service.NewEmailService(emailPreparer, emailProvider, emailHistory, locker)

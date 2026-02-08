@@ -20,6 +20,7 @@ type Config struct {
 	MySQLMaxLife   time.Duration
 	AWSRegion      string
 	SESSourceEmail string
+	EmailProvider  string
 	RedisAddr      string
 	RedisPassword  string
 	RedisDB        int
@@ -29,14 +30,15 @@ type Config struct {
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
-	awsRegion := os.Getenv("AWS_REGION")
-	if awsRegion == "" {
-		return nil, errors.New("AWS_REGION environment variable is required")
-	}
-
 	sesSource := os.Getenv("SES_SOURCE_EMAIL")
 	if sesSource == "" {
 		return nil, errors.New("SES_SOURCE_EMAIL environment variable is required")
+	}
+
+	emailProvider := getEnv("EMAIL_PROVIDER", "ses")
+	awsRegion := os.Getenv("AWS_REGION")
+	if emailProvider != "noop" && awsRegion == "" {
+		return nil, errors.New("AWS_REGION environment variable is required")
 	}
 
 	mysqlDSN := os.Getenv("MYSQL_DSN")
@@ -60,6 +62,7 @@ func Load() (*Config, error) {
 		MySQLMaxLife:   getDurationEnv("MYSQL_CONN_MAX_LIFETIME_MINUTES", 30*time.Minute),
 		AWSRegion:      awsRegion,
 		SESSourceEmail: sesSource,
+		EmailProvider:  emailProvider,
 		RedisAddr:      redisAddr,
 		RedisPassword:  getEnv("REDIS_PASSWORD", ""),
 		RedisDB:        getIntEnv("REDIS_DB", 0),

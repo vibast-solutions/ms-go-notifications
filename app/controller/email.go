@@ -12,11 +12,11 @@ import (
 
 type EmailController struct {
 	emailService *service.EmailService
-	producer     *queue.EmailProducer
+	producer     queue.EmailPublisher
 }
 
 // NewEmailController constructs the HTTP email controller.
-func NewEmailController(emailService *service.EmailService, producer *queue.EmailProducer) *EmailController {
+func NewEmailController(emailService *service.EmailService, producer queue.EmailPublisher) *EmailController {
 	return &EmailController{emailService: emailService, producer: producer}
 }
 

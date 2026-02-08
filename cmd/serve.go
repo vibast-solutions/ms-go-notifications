@@ -3,11 +3,13 @@ package cmd
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -50,11 +52,6 @@ func runServe(_ *cobra.Command, _ []string) {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(), awsconfig.WithRegion(cfg.AWSRegion))
-	if err != nil {
-		log.Fatalf("Failed to load AWS configuration: %v", err)
-	}
-
 	db, err := sql.Open("mysql", cfg.MySQLDSN)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -80,8 +77,12 @@ func runServe(_ *cobra.Command, _ []string) {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
 
+	emailProvider, err := buildEmailProvider(cfg)
+	if err != nil {
+		log.Fatalf("Failed to build email provider: %v", err)
+	}
+
 	emailPreparer := preparer.NewChain(preparer.NewRawPreparer(cfg.SESSourceEmail))
-	emailProvider := provider.NewSESProvider(awsCfg, cfg.SESSourceEmail)
 	emailHistory := repository.NewEmailHistoryRepository(db)
 	locker := lock.NewRedisLocker(rdb)
 	emailService := service.NewEmailService(emailPreparer, emailProvider, emailHistory, locker)
@@ -154,4 +155,19 @@ func setupGRPCServer(cfg *config.Config, emailServer *grpcserver.Server) (*grpc.
 	types.RegisterNotificationsServiceServer(grpcServer, emailServer)
 
 	return grpcServer, lis
+}
+
+func buildEmailProvider(cfg *config.Config) (provider.EmailProvider, error) {
+	switch strings.ToLower(cfg.EmailProvider) {
+	case "", "ses":
+		awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(), awsconfig.WithRegion(cfg.AWSRegion))
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewSESProvider(awsCfg, cfg.SESSourceEmail), nil
+	case "noop":
+		return provider.NewNoopProvider(), nil
+	default:
+		return nil, fmt.Errorf("unsupported EMAIL_PROVIDER: %s", cfg.EmailProvider)
+	}
 }

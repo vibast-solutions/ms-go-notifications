@@ -1,0 +1,59 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: notifications
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  notifications:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["serve"]
+    environment:
+      HTTP_PORT: 8080
+      GRPC_PORT: 9090
+      MYSQL_DSN: root:root@tcp(mysql:3306)/notifications?parseTime=true
+      REDIS_ADDR: redis:6379
+      EMAIL_PROVIDER: noop
+      SES_SOURCE_EMAIL: noreply@example.com
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  notifications-consumer:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["consume", "emails", "consumer-1"]
+    environment:
+      MYSQL_DSN: root:root@tcp(mysql:3306)/notifications?parseTime=true
+      REDIS_ADDR: redis:6379
+      EMAIL_PROVIDER: noop
+      SES_SOURCE_EMAIL: noreply@example.com
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      notifications:
+        condition: service_started

@@ -56,8 +56,9 @@ Set environment variables or use defaults:
 | HTTP_PORT | 8080 | HTTP server port |
 | GRPC_HOST | 0.0.0.0 | gRPC server bind address |
 | GRPC_PORT | 9090 | gRPC server port |
-| AWS_REGION | (required) | AWS region for SES |
+| AWS_REGION | (required for ses) | AWS region for SES |
 | SES_SOURCE_EMAIL | (required) | Verified sender email for SES |
+| EMAIL_PROVIDER | ses | Email provider: `ses` or `noop` |
 | MYSQL_MAX_OPEN_CONNS | 10 | Max open DB connections |
 | MYSQL_MAX_IDLE_CONNS | 5 | Max idle DB connections |
 | MYSQL_CONN_MAX_LIFETIME_MINUTES | 30 | Max connection lifetime in minutes |
