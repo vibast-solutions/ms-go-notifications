@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package notifications;
+
+option go_package = "github.com/vibast-solutions/ms-go-notifications/app/types;types";
+
+service NotificationsService {
+  rpc SendRawEmail(SendRawEmailRequest) returns (SendRawEmailResponse);
+}
+
+message SendRawEmailRequest {
+  string request_id = 1;
+  string recipient = 2;
+  string subject = 3;
+  string content = 4;
+}
+
+message SendRawEmailResponse {
+  bool success = 1;
+  string error_message = 2;
+}

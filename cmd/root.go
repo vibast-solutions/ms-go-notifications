@@ -13,6 +13,7 @@ var rootCmd = &cobra.Command{
 	Long:  "A notifications microservice providing delivery of email/SMS/push notifications via HTTP and gRPC.",
 }
 
+// Execute runs the root Cobra command.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

@@ -24,7 +24,9 @@ notifications/
 ├── config/
 │   └── config.go           # Environment-based configuration
 ├── app/                    # Application logic (to be implemented)
-└── proto/                  # gRPC definitions (to be implemented)
+├── proto/                  # gRPC definitions
+└── scripts/
+    └── gen_proto.sh        # Generate Go protobuf/grpc files
 ```
 
 ## Configuration (Environment Variables)
@@ -32,6 +34,8 @@ notifications/
 - `HTTP_PORT` (default: 8080)
 - `GRPC_HOST` (default: 0.0.0.0)
 - `GRPC_PORT` (default: 9090)
+- `AWS_REGION` (required)
+- `SES_SOURCE_EMAIL` (required)
 
 ## Build
 - `make build` — native binary to `build/notifications-service`
