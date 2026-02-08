@@ -21,6 +21,7 @@ type Config struct {
 	AWSRegion      string
 	SESSourceEmail string
 	EmailProvider  string
+	LogLevel       string
 	RedisAddr      string
 	RedisPassword  string
 	RedisDB        int
@@ -63,6 +64,7 @@ func Load() (*Config, error) {
 		AWSRegion:      awsRegion,
 		SESSourceEmail: sesSource,
 		EmailProvider:  emailProvider,
+		LogLevel:       getEnv("LOG_LEVEL", "info"),
 		RedisAddr:      redisAddr,
 		RedisPassword:  getEnv("REDIS_PASSWORD", ""),
 		RedisDB:        getIntEnv("REDIS_DB", 0),

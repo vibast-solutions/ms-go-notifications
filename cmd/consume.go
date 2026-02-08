@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"database/sql"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,6 +16,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -46,12 +46,15 @@ func runConsumeEmails(_ *cobra.Command, args []string) {
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		logrus.WithError(err).Fatal("Failed to load configuration")
+	}
+	if err := configureLogging(cfg); err != nil {
+		logrus.WithError(err).Fatal("Failed to configure logging")
 	}
 
 	db, err := sql.Open("mysql", cfg.MySQLDSN)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logrus.WithError(err).Fatal("Failed to connect to database")
 	}
 	defer db.Close()
 
@@ -60,7 +63,7 @@ func runConsumeEmails(_ *cobra.Command, args []string) {
 	db.SetConnMaxLifetime(cfg.MySQLMaxLife)
 
 	if err := db.Ping(); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
+		logrus.WithError(err).Fatal("Failed to ping database")
 	}
 
 	rdb := redis.NewClient(&redis.Options{
@@ -71,12 +74,12 @@ func runConsumeEmails(_ *cobra.Command, args []string) {
 	defer rdb.Close()
 
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		logrus.WithError(err).Fatal("Failed to connect to Redis")
 	}
 
 	emailProvider, err := buildEmailProvider(cfg)
 	if err != nil {
-		log.Fatalf("Failed to build email provider: %v", err)
+		logrus.WithError(err).Fatal("Failed to build email provider")
 	}
 
 	emailPreparer := preparer.NewChain(preparer.NewRawPreparer(cfg.SESSourceEmail))
@@ -94,13 +97,13 @@ func runConsumeEmails(_ *cobra.Command, args []string) {
 
 	go func() {
 		<-quit
-		log.Println("Received shutdown signal, stopping consumer...")
+		logrus.Info("Received shutdown signal, stopping consumer...")
 		cancel()
 	}()
 
 	if err := consumer.Run(ctx); err != nil {
-		log.Fatalf("Consumer error: %v", err)
+		logrus.WithError(err).Fatal("Consumer error")
 	}
 
-	log.Println("Consumer stopped")
+	logrus.Info("Consumer stopped")
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/sirupsen/logrus"
 	"github.com/vibast-solutions/ms-go-notifications/app/entity"
 	"github.com/vibast-solutions/ms-go-notifications/app/lock"
 	"github.com/vibast-solutions/ms-go-notifications/app/preparer"
@@ -59,8 +60,14 @@ func (s *EmailService) SendRaw(ctx context.Context, recipient string, subject st
 		return fmt.Errorf("content is required")
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"request_id": requestID,
+		"recipient":  recipient,
+	}).Debug("Sending raw email")
+
 	lockKey := fmt.Sprintf("notifications:email:%s", requestID)
 	if err := s.locker.Acquire(ctx, lockKey, 2*time.Minute); err != nil {
+		logrus.WithError(err).WithField("request_id", requestID).Warn("Failed to acquire lock")
 		return fmt.Errorf("acquire lock: %w", err)
 	}
 	defer func() {
@@ -68,33 +75,42 @@ func (s *EmailService) SendRaw(ctx context.Context, recipient string, subject st
 	}()
 
 	if err := s.history.UpdateStatus(ctx, requestID, entity.EmailStatusProcessing); err != nil {
+		logrus.WithError(err).WithField("request_id", requestID).Warn("Failed to set status=processing")
 		return fmt.Errorf("update status to processing: %w", err)
 	}
 
 	raw, err := s.preparer.Prepare(ctx, recipient, subject, content)
 	if err != nil {
+		logrus.WithError(err).WithField("request_id", requestID).Warn("Prepare failed")
 		if updateErr := s.history.UpdateStatus(ctx, requestID, entity.EmailStatusTemporaryFailure); updateErr != nil {
+			logrus.WithError(updateErr).WithField("request_id", requestID).Warn("Failed to set status=temporary_failure")
 			return fmt.Errorf("prepare email content: %v; update status: %w", err, updateErr)
 		}
 		return fmt.Errorf("prepare email content: %w", err)
 	}
 
 	if err := s.history.UpdateContent(ctx, requestID, string(raw)); err != nil {
+		logrus.WithError(err).WithField("request_id", requestID).Warn("Failed to store prepared content")
 		if updateErr := s.history.UpdateStatus(ctx, requestID, entity.EmailStatusTemporaryFailure); updateErr != nil {
+			logrus.WithError(updateErr).WithField("request_id", requestID).Warn("Failed to set status=temporary_failure")
 			return fmt.Errorf("update email history content: %v; update status: %w", err, updateErr)
 		}
 		return fmt.Errorf("update email history content: %w", err)
 	}
 
 	if err := s.provider.SendRaw(ctx, recipient, raw); err != nil {
+		logrus.WithError(err).WithField("request_id", requestID).Warn("SendRaw failed")
 		if updateErr := s.history.UpdateStatus(ctx, requestID, entity.EmailStatusPermanentFailure); updateErr != nil {
+			logrus.WithError(updateErr).WithField("request_id", requestID).Warn("Failed to set status=permanent_failure")
 			return fmt.Errorf("send failed: %v; update status: %w", err, updateErr)
 		}
 		return err
 	}
 
 	if err := s.history.UpdateStatus(ctx, requestID, entity.EmailStatusSuccess); err != nil {
+		logrus.WithError(err).WithField("request_id", requestID).Warn("Failed to set status=success")
 		return fmt.Errorf("update status: %w", err)
 	}
+	logrus.WithField("request_id", requestID).Debug("Send raw completed")
 	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -29,6 +28,7 @@ import (
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -49,12 +49,15 @@ func init() {
 func runServe(_ *cobra.Command, _ []string) {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		logrus.WithError(err).Fatal("Failed to load configuration")
+	}
+	if err := configureLogging(cfg); err != nil {
+		logrus.WithError(err).Fatal("Failed to configure logging")
 	}
 
 	db, err := sql.Open("mysql", cfg.MySQLDSN)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logrus.WithError(err).Fatal("Failed to connect to database")
 	}
 	defer db.Close()
 
@@ -63,7 +66,7 @@ func runServe(_ *cobra.Command, _ []string) {
 	db.SetConnMaxLifetime(cfg.MySQLMaxLife)
 
 	if err := db.Ping(); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
+		logrus.WithError(err).Fatal("Failed to ping database")
 	}
 
 	rdb := redis.NewClient(&redis.Options{
@@ -74,12 +77,12 @@ func runServe(_ *cobra.Command, _ []string) {
 	defer rdb.Close()
 
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		logrus.WithError(err).Fatal("Failed to connect to Redis")
 	}
 
 	emailProvider, err := buildEmailProvider(cfg)
 	if err != nil {
-		log.Fatalf("Failed to build email provider: %v", err)
+		logrus.WithError(err).Fatal("Failed to build email provider")
 	}
 
 	emailPreparer := preparer.NewChain(preparer.NewRawPreparer(cfg.SESSourceEmail))
@@ -95,33 +98,33 @@ func runServe(_ *cobra.Command, _ []string) {
 
 	go func() {
 		httpAddr := net.JoinHostPort(cfg.HTTPHost, cfg.HTTPPort)
-		log.Printf("Starting HTTP server on %s", httpAddr)
+		logrus.WithField("addr", httpAddr).Info("Starting HTTP server")
 		if err := e.Start(httpAddr); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server error: %v", err)
+			logrus.WithError(err).Fatal("HTTP server error")
 		}
 	}()
 
 	go func() {
-		log.Printf("Starting gRPC server on %s", lis.Addr())
+		logrus.WithField("addr", lis.Addr().String()).Info("Starting gRPC server")
 		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatalf("gRPC server error: %v", err)
+			logrus.WithError(err).Fatal("gRPC server error")
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down...")
+	logrus.Info("Shutting down...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := e.Shutdown(shutdownCtx); err != nil {
-		log.Printf("HTTP shutdown error: %v", err)
+		logrus.WithError(err).Warn("HTTP shutdown error")
 	}
 	grpcServer.GracefulStop()
 
-	log.Println("Server stopped")
+	logrus.Info("Server stopped")
 }
 
 // setupHTTPServer configures the Echo HTTP server and routes.
@@ -148,7 +151,7 @@ func setupGRPCServer(cfg *config.Config, emailServer *grpcserver.Server) (*grpc.
 	grpcAddr := net.JoinHostPort(cfg.GRPCHost, cfg.GRPCPort)
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		log.Fatalf("Failed to listen on gRPC port: %v", err)
+		logrus.WithError(err).Fatal("Failed to listen on gRPC port")
 	}
 
 	grpcServer := grpc.NewServer()

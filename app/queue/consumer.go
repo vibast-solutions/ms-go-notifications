@@ -2,10 +2,10 @@ package queue
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 	"github.com/vibast-solutions/ms-go-notifications/app/service"
 )
 
@@ -30,14 +30,17 @@ func (c *EmailConsumer) Run(ctx context.Context) error {
 		return err
 	}
 
-	log.Printf("Consumer %s started on stream %s", c.consumerName, StreamName)
+	logrus.WithFields(logrus.Fields{
+		"consumer": c.consumerName,
+		"stream":   StreamName,
+	}).Info("Consumer started")
 
 	// First drain pending messages, then switch to reading new ones.
 	startID := "0"
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Consumer shutting down")
+			logrus.Info("Consumer shutting down")
 			return nil
 		default:
 		}
@@ -59,10 +62,10 @@ func (c *EmailConsumer) Run(ctx context.Context) error {
 				continue
 			}
 			if ctx.Err() != nil {
-				log.Println("Consumer shutting down")
+				logrus.Info("Consumer shutting down")
 				return nil
 			}
-			log.Printf("XReadGroup error: %v", err)
+			logrus.WithError(err).Warn("XReadGroup error")
 			time.Sleep(time.Second)
 			continue
 		}
@@ -87,19 +90,26 @@ func (c *EmailConsumer) processMessage(ctx context.Context, msg redis.XMessage) 
 	subject, _ := msg.Values["subject"].(string)
 	content, _ := msg.Values["content"].(string)
 
-	log.Printf("Processing message %s (request_id=%s recipient=%s)", msg.ID, requestID, recipient)
+	logrus.WithFields(logrus.Fields{
+		"message_id": msg.ID,
+		"request_id": requestID,
+		"recipient":  recipient,
+	}).Info("Processing message")
 
 	sendCtx := service.WithRequestID(ctx, requestID)
 	sendCtx, cancel := context.WithTimeout(sendCtx, 30*time.Second)
 	defer cancel()
 
 	if err := c.emailService.SendRaw(sendCtx, recipient, subject, content); err != nil {
-		log.Printf("SendRaw failed (request_id=%s): %v — message %s stays pending", requestID, err, msg.ID)
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"request_id": requestID,
+			"message_id": msg.ID,
+		}).Warn("SendRaw failed; message stays pending")
 		return
 	}
 
 	if err := c.client.XAck(ctx, StreamName, ConsumerGroup, msg.ID).Err(); err != nil {
-		log.Printf("XAck failed for message %s: %v", msg.ID, err)
+		logrus.WithError(err).WithField("message_id", msg.ID).Warn("XAck failed")
 	}
 }
 
