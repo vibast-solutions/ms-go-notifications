@@ -1,48 +1,103 @@
 # Notifications Microservice - Claude Context
 
 ## Overview
-Notifications microservice built with Go, intended to deliver email/SMS/push notifications via HTTP and gRPC interfaces.
+Email notifications service with async delivery via Redis streams, AWS SES integration, distributed locking, and idempotent request handling.
 
 ## Technology Stack
 - **Framework**: Echo (HTTP), gRPC
 - **CLI**: Cobra
+- **Database**: MySQL (email history tracking)
+- **Queue**: Redis Streams (async email delivery)
+- **Email Provider**: AWS SES v2 (pluggable, noop provider for dev/testing)
+- **Locking**: Redis (primary) or MySQL advisory locks (pluggable)
 - **Configuration**: Environment-based with optional `.env` support
 
 ## Module
 - **Path**: `github.com/vibast-solutions/ms-go-notifications`
-- Importable by other Go modules via `go get github.com/vibast-solutions/ms-go-notifications`
 
 ## Directory Structure
 ```
 notifications/
-├── main.go                 # Entry point, calls cmd.Execute()
-├── Makefile                # Build targets (native, linux, darwin — arm64/amd64)
+├── main.go
+├── Makefile
 ├── cmd/
 │   ├── root.go             # Cobra root command
-│   ├── serve.go            # Starts HTTP (8080) + gRPC (9090) servers
-│   └── version.go          # Version command (shows git tag + commit hash)
+│   ├── serve.go            # HTTP + gRPC servers
+│   ├── consume.go          # Email queue consumer command
+│   ├── version.go          # Version command (ldflags)
+│   └── logging.go          # Logrus configuration
 ├── config/
-│   └── config.go           # Environment-based configuration
-├── app/                    # Application logic (to be implemented)
-├── proto/                  # gRPC definitions
+│   └── config.go           # Environment variable loading
+├── app/
+│   ├── controller/
+│   │   └── email.go        # HTTP handler (POST /email/send/raw)
+│   ├── service/
+│   │   ├── email.go        # Email send orchestration
+│   │   ├── errors.go       # Service-level sentinel errors
+│   │   └── context.go      # Request ID context helpers
+│   ├── repository/
+│   │   └── email_history.go # MySQL CRUD for email history
+│   ├── entity/
+│   │   └── email_history.go # EmailHistory entity + status codes
+│   ├── provider/
+│   │   ├── provider.go     # EmailProvider interface
+│   │   ├── ses.go          # AWS SES implementation
+│   │   └── noop.go         # No-op stub provider
+│   ├── preparer/
+│   │   ├── preparer.go     # EmailPreparer interface + chain pattern
+│   │   └── raw.go          # Raw MIME message builder
+│   ├── queue/
+│   │   ├── message.go      # EmailMessage + publisher/consumer interfaces
+│   │   ├── producer.go     # Redis stream producer
+│   │   └── consumer.go     # Redis consumer worker (consumer group)
+│   ├── lock/
+│   │   ├── locker.go       # Locker interface
+│   │   ├── redis.go        # Redis distributed lock (SetNX + Lua release)
+│   │   └── mysql.go        # MySQL advisory lock
+│   ├── dto/
+│   │   └── send_raw.go     # SendRawRequest DTO + validation
+│   ├── grpc/
+│   │   └── server.go       # gRPC handler
+│   └── types/
+│       ├── notifications.pb.go
+│       └── notifications_grpc.pb.go
+├── proto/
+│   └── notifications.proto
 └── scripts/
-    └── gen_proto.sh        # Generate Go protobuf/grpc files
+    └── gen_proto.sh
 ```
 
+## Request Flow
+
+**Sync (HTTP/gRPC):** Client → Validate → Create email history (idempotent via unique request_id) → Publish to Redis stream → Return 200.
+
+**Async (Consumer worker):** Read from Redis stream → Acquire distributed lock → Update status to Processing → Prepare MIME message → Send via SES → Update status to Success → Ack message.
+
+## CLI Commands
+- `notifications serve` — Start HTTP + gRPC servers
+- `notifications consume emails <consumer_name>` — Start email queue consumer worker
+
 ## Configuration (Environment Variables)
-- `HTTP_HOST` (default: 0.0.0.0)
-- `HTTP_PORT` (default: 8080)
-- `GRPC_HOST` (default: 0.0.0.0)
-- `GRPC_PORT` (default: 9090)
+- `HTTP_HOST` / `HTTP_PORT` (default: 0.0.0.0:8080)
+- `GRPC_HOST` / `GRPC_PORT` (default: 0.0.0.0:9090)
+- `MYSQL_DSN` (required)
+- `REDIS_ADDR` (required)
 - `AWS_REGION` (required)
 - `SES_SOURCE_EMAIL` (required)
+- `EMAIL_PROVIDER` (default: ses, options: ses/noop)
+- `LOG_LEVEL` (default: info)
+- `MYSQL_MAX_OPEN_CONNS`, `MYSQL_MAX_IDLE_CONNS`, `MYSQL_CONN_MAX_LIFETIME_MINUTES`
+
+## Email Status Codes
+New(0) → Processing(1) → Success(10) | TemporaryFailure(40) | UnknownFailure(49) | PermanentFailure(50)
+
+## Key Patterns
+- Idempotency via unique constraint on `request_id` in email_history table
+- At-least-once delivery via Redis consumer groups with explicit ACKs
+- Distributed lock prevents concurrent processing of the same email
+- Pluggable providers/lockers via interfaces
 
 ## Build
 - `make build` — native binary to `build/notifications-service`
-- `make build-linux-arm64` — Linux ARM64 cross-compile
-- `make build-linux-amd64` — Linux AMD64 cross-compile
-- `make build-darwin-arm64` — macOS ARM64 (Apple Silicon) cross-compile
-- `make build-darwin-amd64` — macOS AMD64 (Intel) cross-compile
-- `make build-all` — all targets
-- `make clean` — remove `build/` directory
-- Version and commit hash are injected at build time via `-ldflags` (see `cmd/version.go`)
+- `make build-all` — cross-compile for linux/darwin arm64/amd64
+- Version and commit hash injected via `-ldflags`
