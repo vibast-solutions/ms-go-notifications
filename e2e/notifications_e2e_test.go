@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	defaultHTTPBase = "http://localhost:8080"
-	defaultGRPCAddr = "localhost:9090"
-	defaultMySQLDSN = "root:root@tcp(localhost:3307)/notifications?parseTime=true"
+	defaultHTTPBase = "http://localhost:18080"
+	defaultGRPCAddr = "localhost:19090"
+	defaultMySQLDSN = "root:root@tcp(localhost:13306)/notifications?parseTime=true"
 )
 
 type httpClient struct {

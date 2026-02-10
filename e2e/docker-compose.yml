@@ -27,8 +27,8 @@ services:
     environment:
       HTTP_PORT: 8080
       GRPC_PORT: 9090
-      MYSQL_DSN: root:root@tcp(mysql:13306)/notifications?parseTime=true
-      REDIS_ADDR: redis:16379
+      MYSQL_DSN: root:root@tcp(mysql:3306)/notifications?parseTime=true
+      REDIS_ADDR: redis:6379
       EMAIL_PROVIDER: noop
       SES_SOURCE_EMAIL: noreply@example.com
     ports:
@@ -47,7 +47,7 @@ services:
     command: ["consume", "emails", "consumer-1"]
     environment:
       MYSQL_DSN: root:root@tcp(mysql:3306)/notifications?parseTime=true
-      REDIS_ADDR: redis:16379
+      REDIS_ADDR: redis:6379
       EMAIL_PROVIDER: noop
       SES_SOURCE_EMAIL: noreply@example.com
     depends_on:
