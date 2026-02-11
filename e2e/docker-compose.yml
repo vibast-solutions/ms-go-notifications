@@ -31,9 +31,14 @@ services:
       REDIS_ADDR: redis:6379
       EMAIL_PROVIDER: noop
       SES_SOURCE_EMAIL: noreply@example.com
+      APP_API_KEY: notifications-app-api-key
+      AUTH_SERVICE_GRPC_ADDR: host.docker.internal:38082
+      APP_SERVICE_NAME: notifications-service
     ports:
       - "18080:8080"
       - "19090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       mysql:
         condition: service_healthy

@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -47,6 +48,10 @@ func newHTTPClient() *httpClient {
 }
 
 func (c *httpClient) postJSON(t *testing.T, path string, body any) (*http.Response, []byte) {
+	return c.postJSONWithAPIKey(t, path, body, notificationsCallerAPIKey())
+}
+
+func (c *httpClient) postJSONWithAPIKey(t *testing.T, path string, body any, apiKey string) (*http.Response, []byte) {
 	t.Helper()
 
 	data, err := json.Marshal(body)
@@ -59,6 +64,9 @@ func (c *httpClient) postJSON(t *testing.T, path string, body any) (*http.Respon
 		t.Fatalf("new request failed: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if apiKey != "" {
+		req.Header.Set("X-API-Key", apiKey)
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -78,6 +86,7 @@ func waitForHTTP(baseURL string, timeout time.Duration) error {
 	client := &http.Client{Timeout: 2 * time.Second}
 	for time.Now().Before(deadline) {
 		req, _ := http.NewRequest(http.MethodGet, baseURL+"/health", nil)
+		req.Header.Set("X-API-Key", notificationsCallerAPIKey())
 		resp, err := client.Do(req)
 		if err == nil {
 			resp.Body.Close()
@@ -88,6 +97,42 @@ func waitForHTTP(baseURL string, timeout time.Duration) error {
 		time.Sleep(500 * time.Millisecond)
 	}
 	return fmt.Errorf("http service not ready at %s", baseURL)
+}
+
+func withNotificationsGRPCAPIKey() grpc.DialOption {
+	return grpc.WithUnaryInterceptor(func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		ctx = metadata.AppendToOutgoingContext(ctx, "x-api-key", notificationsCallerAPIKey())
+		return invoker(ctx, method, req, reply, cc, opts...)
+	})
+}
+
+func dialNotificationsGRPC(t *testing.T, addr string) *grpc.ClientConn {
+	t.Helper()
+
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), withNotificationsGRPCAPIKey())
+	if err != nil {
+		t.Fatalf("grpc dial failed: %v", err)
+	}
+
+	return conn
+}
+
+func dialNotificationsGRPCRaw(t *testing.T, addr string) *grpc.ClientConn {
+	t.Helper()
+
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("grpc dial failed: %v", err)
+	}
+
+	return conn
+}
+
+func notificationsGRPCContextWithAPIKey(apiKey string) context.Context {
+	if apiKey == "" {
+		return context.Background()
+	}
+	return metadata.AppendToOutgoingContext(context.Background(), "x-api-key", apiKey)
 }
 
 func waitForGRPC(addr string, timeout time.Duration) error {
@@ -158,6 +203,20 @@ func TestNotificationsE2E(t *testing.T) {
 
 	client := newHTTPClient()
 
+	t.Run("HTTPUnauthorizedMissingAPIKey", func(t *testing.T) {
+		resp, _ := client.postJSONWithAPIKey(t, "/email/send/raw", map[string]string{}, "")
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for missing x-api-key, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("HTTPForbiddenInsufficientAccess", func(t *testing.T) {
+		resp, _ := client.postJSONWithAPIKey(t, "/email/send/raw", map[string]string{}, notificationsNoAccessAPIKey())
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("expected 403 for insufficient access, got %d", resp.StatusCode)
+		}
+	})
+
 	t.Run("HTTPValidation", func(t *testing.T) {
 		resp, _ := client.postJSON(t, "/email/send/raw", map[string]string{})
 		if resp.StatusCode != http.StatusBadRequest {
@@ -219,16 +278,30 @@ func TestNotificationsE2E(t *testing.T) {
 		}
 	})
 
-	conn, err := grpc.Dial(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatalf("grpc dial failed: %v", err)
-	}
+	conn := dialNotificationsGRPC(t, grpcAddr)
 	defer conn.Close()
-
 	grpcClient := types.NewNotificationsServiceClient(conn)
 
+	rawConn := dialNotificationsGRPCRaw(t, grpcAddr)
+	defer rawConn.Close()
+	rawGRPCClient := types.NewNotificationsServiceClient(rawConn)
+
+	t.Run("GRPCUnauthorizedMissingAPIKey", func(t *testing.T) {
+		_, err := rawGRPCClient.SendRawEmail(context.Background(), &types.SendRawEmailRequest{})
+		if status.Code(err) != codes.Unauthenticated {
+			t.Fatalf("expected Unauthenticated, got %v", err)
+		}
+	})
+
+	t.Run("GRPCForbiddenInsufficientAccess", func(t *testing.T) {
+		_, err := rawGRPCClient.SendRawEmail(notificationsGRPCContextWithAPIKey(notificationsNoAccessAPIKey()), &types.SendRawEmailRequest{})
+		if status.Code(err) != codes.PermissionDenied {
+			t.Fatalf("expected PermissionDenied, got %v", err)
+		}
+	})
+
 	t.Run("GRPCValidation", func(t *testing.T) {
-		_, err = grpcClient.SendRawEmail(context.Background(), &types.SendRawEmailRequest{})
+		_, err := grpcClient.SendRawEmail(context.Background(), &types.SendRawEmailRequest{})
 		if status.Code(err) != codes.InvalidArgument {
 			t.Fatalf("expected InvalidArgument, got %v", err)
 		}
@@ -236,7 +309,7 @@ func TestNotificationsE2E(t *testing.T) {
 
 	t.Run("GRPCIdempotency", func(t *testing.T) {
 		grpcRequestID := fmt.Sprintf("e2e-grpc-%d", time.Now().UnixNano())
-		_, err = grpcClient.SendRawEmail(context.Background(), &types.SendRawEmailRequest{
+		_, err := grpcClient.SendRawEmail(context.Background(), &types.SendRawEmailRequest{
 			RequestId: grpcRequestID,
 			Recipient: "e2e@example.com",
 			Subject:   "Hello",

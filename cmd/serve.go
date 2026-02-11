@@ -12,6 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	authclient "github.com/vibast-solutions/lib-go-auth/client"
+	authmiddleware "github.com/vibast-solutions/lib-go-auth/middleware"
+	authlibservice "github.com/vibast-solutions/lib-go-auth/service"
 	"github.com/vibast-solutions/ms-go-notifications/app/controller"
 	grpcserver "github.com/vibast-solutions/ms-go-notifications/app/grpc"
 	"github.com/vibast-solutions/ms-go-notifications/app/lock"
@@ -93,8 +96,17 @@ func runServe(_ *cobra.Command, _ []string) {
 	emailController := controller.NewEmailController(emailService, producer)
 	grpcEmailServer := grpcserver.NewServer(emailService, producer)
 
-	e := setupHTTPServer(cfg, emailController)
-	grpcServer, lis := setupGRPCServer(cfg, grpcEmailServer)
+	authGRPCClient, err := authclient.NewGRPCClientFromAddr(context.Background(), cfg.AuthServiceGRPCAddr)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to initialize auth gRPC client")
+	}
+	defer authGRPCClient.Close()
+	internalAuthService := authlibservice.NewInternalAuthService(authGRPCClient)
+	echoInternalAuthMiddleware := authmiddleware.NewEchoInternalAuthMiddleware(internalAuthService)
+	grpcInternalAuthMiddleware := authmiddleware.NewGRPCInternalAuthMiddleware(internalAuthService)
+
+	e := setupHTTPServer(emailController, echoInternalAuthMiddleware, cfg.AppServiceName)
+	grpcServer, lis := setupGRPCServer(cfg, grpcEmailServer, grpcInternalAuthMiddleware, cfg.AppServiceName)
 
 	go func() {
 		httpAddr := net.JoinHostPort(cfg.HTTPHost, cfg.HTTPPort)
@@ -128,7 +140,11 @@ func runServe(_ *cobra.Command, _ []string) {
 }
 
 // setupHTTPServer configures the Echo HTTP server and routes.
-func setupHTTPServer(cfg *config.Config, emailController *controller.EmailController) *echo.Echo {
+func setupHTTPServer(
+	emailController *controller.EmailController,
+	internalAuthMiddleware *authmiddleware.EchoInternalAuthMiddleware,
+	appServiceName string,
+) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 
@@ -162,6 +178,7 @@ func setupHTTPServer(cfg *config.Config, emailController *controller.EmailContro
 	}))
 	e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.CORS())
+	e.Use(internalAuthMiddleware.RequireInternalAccess(appServiceName))
 
 	email := e.Group("/email")
 	email.POST("/send/raw", emailController.SendRaw)
@@ -174,14 +191,23 @@ func setupHTTPServer(cfg *config.Config, emailController *controller.EmailContro
 }
 
 // setupGRPCServer builds the gRPC server and listener.
-func setupGRPCServer(cfg *config.Config, emailServer *grpcserver.Server) (*grpc.Server, net.Listener) {
+func setupGRPCServer(
+	cfg *config.Config,
+	emailServer *grpcserver.Server,
+	internalAuthMiddleware *authmiddleware.GRPCInternalAuthMiddleware,
+	appServiceName string,
+) (*grpc.Server, net.Listener) {
 	grpcAddr := net.JoinHostPort(cfg.GRPCHost, cfg.GRPCPort)
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to listen on gRPC port")
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			internalAuthMiddleware.UnaryRequireInternalAccess(appServiceName),
+		),
+	)
 	types.RegisterNotificationsServiceServer(grpcServer, emailServer)
 
 	return grpcServer, lis
