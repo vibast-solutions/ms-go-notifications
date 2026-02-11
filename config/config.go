@@ -10,23 +10,55 @@ import (
 )
 
 type Config struct {
-	HTTPHost            string
-	HTTPPort            string
-	GRPCHost            string
-	GRPCPort            string
-	MySQLDSN            string
-	MySQLMaxOpen        int
-	MySQLMaxIdle        int
-	MySQLMaxLife        time.Duration
-	AWSRegion           string
-	SESSourceEmail      string
-	EmailProvider       string
-	LogLevel            string
-	RedisAddr           string
-	RedisPassword       string
-	RedisDB             int
-	AuthServiceGRPCAddr string
-	AppServiceName      string
+	App               AppConfig
+	HTTP              ServerConfig
+	GRPC              ServerConfig
+	MySQL             MySQLConfig
+	Log               LogConfig
+	Redis             RedisConfig
+	InternalEndpoints InternalEndpointsConfig
+	EmailProviders    EmailProvidersConfig
+}
+
+type AppConfig struct {
+	ServiceName string
+	APIKey      string
+}
+
+type ServerConfig struct {
+	Host string
+	Port string
+}
+
+type MySQLConfig struct {
+	DSN             string
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+}
+
+type LogConfig struct {
+	Level string
+}
+
+type RedisConfig struct {
+	Addr     string
+	Password string
+	DB       int
+}
+
+type InternalEndpointsConfig struct {
+	AuthGRPCAddr string
+}
+
+type EmailProvidersConfig struct {
+	Provider string
+	AWS      AWSEmailConfig
+}
+
+type AWSEmailConfig struct {
+	Region      string
+	SourceEmail string
 }
 
 // Load reads configuration from environment variables (and .env when present).
@@ -55,23 +87,42 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		HTTPHost:            getEnv("HTTP_HOST", "0.0.0.0"),
-		HTTPPort:            getEnv("HTTP_PORT", "8080"),
-		GRPCHost:            getEnv("GRPC_HOST", "0.0.0.0"),
-		GRPCPort:            getEnv("GRPC_PORT", "9090"),
-		MySQLDSN:            mysqlDSN,
-		MySQLMaxOpen:        getIntEnv("MYSQL_MAX_OPEN_CONNS", 10),
-		MySQLMaxIdle:        getIntEnv("MYSQL_MAX_IDLE_CONNS", 5),
-		MySQLMaxLife:        getDurationEnv("MYSQL_CONN_MAX_LIFETIME_MINUTES", 30*time.Minute),
-		AWSRegion:           awsRegion,
-		SESSourceEmail:      sesSource,
-		EmailProvider:       emailProvider,
-		LogLevel:            getEnv("LOG_LEVEL", "info"),
-		RedisAddr:           redisAddr,
-		RedisPassword:       getEnv("REDIS_PASSWORD", ""),
-		RedisDB:             getIntEnv("REDIS_DB", 0),
-		AuthServiceGRPCAddr: getEnv("AUTH_SERVICE_GRPC_ADDR", "localhost:9090"),
-		AppServiceName:      getEnv("APP_SERVICE_NAME", "notifications-service"),
+		App: AppConfig{
+			ServiceName: getEnv("APP_SERVICE_NAME", "notifications-service"),
+			APIKey:      getEnv("APP_API_KEY", ""),
+		},
+		HTTP: ServerConfig{
+			Host: getEnv("HTTP_HOST", "0.0.0.0"),
+			Port: getEnv("HTTP_PORT", "8080"),
+		},
+		GRPC: ServerConfig{
+			Host: getEnv("GRPC_HOST", "0.0.0.0"),
+			Port: getEnv("GRPC_PORT", "9090"),
+		},
+		MySQL: MySQLConfig{
+			DSN:             mysqlDSN,
+			MaxOpenConns:    getIntEnv("MYSQL_MAX_OPEN_CONNS", 10),
+			MaxIdleConns:    getIntEnv("MYSQL_MAX_IDLE_CONNS", 5),
+			ConnMaxLifetime: getDurationEnv("MYSQL_CONN_MAX_LIFETIME_MINUTES", 30*time.Minute),
+		},
+		Log: LogConfig{
+			Level: getEnv("LOG_LEVEL", "info"),
+		},
+		Redis: RedisConfig{
+			Addr:     redisAddr,
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getIntEnv("REDIS_DB", 0),
+		},
+		InternalEndpoints: InternalEndpointsConfig{
+			AuthGRPCAddr: getEnv("AUTH_SERVICE_GRPC_ADDR", "localhost:9090"),
+		},
+		EmailProviders: EmailProvidersConfig{
+			Provider: emailProvider,
+			AWS: AWSEmailConfig{
+				Region:      awsRegion,
+				SourceEmail: sesSource,
+			},
+		},
 	}, nil
 }
 

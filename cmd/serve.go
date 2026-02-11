@@ -58,24 +58,24 @@ func runServe(_ *cobra.Command, _ []string) {
 		logrus.WithError(err).Fatal("Failed to configure logging")
 	}
 
-	db, err := sql.Open("mysql", cfg.MySQLDSN)
+	db, err := sql.Open("mysql", cfg.MySQL.DSN)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to connect to database")
 	}
 	defer db.Close()
 
-	db.SetMaxOpenConns(cfg.MySQLMaxOpen)
-	db.SetMaxIdleConns(cfg.MySQLMaxIdle)
-	db.SetConnMaxLifetime(cfg.MySQLMaxLife)
+	db.SetMaxOpenConns(cfg.MySQL.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.MySQL.MaxIdleConns)
+	db.SetConnMaxLifetime(cfg.MySQL.ConnMaxLifetime)
 
 	if err := db.Ping(); err != nil {
 		logrus.WithError(err).Fatal("Failed to ping database")
 	}
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisAddr,
-		Password: cfg.RedisPassword,
-		DB:       cfg.RedisDB,
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
 	})
 	defer rdb.Close()
 
@@ -88,7 +88,7 @@ func runServe(_ *cobra.Command, _ []string) {
 		logrus.WithError(err).Fatal("Failed to build email provider")
 	}
 
-	emailPreparer := preparer.NewChain(preparer.NewRawPreparer(cfg.SESSourceEmail))
+	emailPreparer := preparer.NewChain(preparer.NewRawPreparer(cfg.EmailProviders.AWS.SourceEmail))
 	emailHistory := repository.NewEmailHistoryRepository(db)
 	locker := lock.NewRedisLocker(rdb)
 	emailService := service.NewEmailService(emailPreparer, emailProvider, emailHistory, locker)
@@ -96,7 +96,7 @@ func runServe(_ *cobra.Command, _ []string) {
 	emailController := controller.NewEmailController(emailService, producer)
 	grpcEmailServer := grpcserver.NewServer(emailService, producer)
 
-	authGRPCClient, err := authclient.NewGRPCClientFromAddr(context.Background(), cfg.AuthServiceGRPCAddr)
+	authGRPCClient, err := authclient.NewGRPCClientFromAddr(context.Background(), cfg.InternalEndpoints.AuthGRPCAddr)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to initialize auth gRPC client")
 	}
@@ -105,11 +105,11 @@ func runServe(_ *cobra.Command, _ []string) {
 	echoInternalAuthMiddleware := authmiddleware.NewEchoInternalAuthMiddleware(internalAuthService)
 	grpcInternalAuthMiddleware := authmiddleware.NewGRPCInternalAuthMiddleware(internalAuthService)
 
-	e := setupHTTPServer(emailController, echoInternalAuthMiddleware, cfg.AppServiceName)
-	grpcServer, lis := setupGRPCServer(cfg, grpcEmailServer, grpcInternalAuthMiddleware, cfg.AppServiceName)
+	e := setupHTTPServer(emailController, echoInternalAuthMiddleware, cfg.App.ServiceName)
+	grpcServer, lis := setupGRPCServer(cfg, grpcEmailServer, grpcInternalAuthMiddleware, cfg.App.ServiceName)
 
 	go func() {
-		httpAddr := net.JoinHostPort(cfg.HTTPHost, cfg.HTTPPort)
+		httpAddr := net.JoinHostPort(cfg.HTTP.Host, cfg.HTTP.Port)
 		logrus.WithField("addr", httpAddr).Info("Starting HTTP server")
 		if err := e.Start(httpAddr); err != nil && err != http.ErrServerClosed {
 			logrus.WithError(err).Fatal("HTTP server error")
@@ -197,7 +197,7 @@ func setupGRPCServer(
 	internalAuthMiddleware *authmiddleware.GRPCInternalAuthMiddleware,
 	appServiceName string,
 ) (*grpc.Server, net.Listener) {
-	grpcAddr := net.JoinHostPort(cfg.GRPCHost, cfg.GRPCPort)
+	grpcAddr := net.JoinHostPort(cfg.GRPC.Host, cfg.GRPC.Port)
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to listen on gRPC port")
@@ -214,16 +214,16 @@ func setupGRPCServer(
 }
 
 func buildEmailProvider(cfg *config.Config) (provider.EmailProvider, error) {
-	switch strings.ToLower(cfg.EmailProvider) {
+	switch strings.ToLower(cfg.EmailProviders.Provider) {
 	case "", "ses":
-		awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(), awsconfig.WithRegion(cfg.AWSRegion))
+		awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(), awsconfig.WithRegion(cfg.EmailProviders.AWS.Region))
 		if err != nil {
 			return nil, err
 		}
-		return provider.NewSESProvider(awsCfg, cfg.SESSourceEmail), nil
+		return provider.NewSESProvider(awsCfg, cfg.EmailProviders.AWS.SourceEmail), nil
 	case "noop":
 		return provider.NewNoopProvider(), nil
 	default:
-		return nil, fmt.Errorf("unsupported EMAIL_PROVIDER: %s", cfg.EmailProvider)
+		return nil, fmt.Errorf("unsupported EMAIL_PROVIDER: %s", cfg.EmailProviders.Provider)
 	}
 }

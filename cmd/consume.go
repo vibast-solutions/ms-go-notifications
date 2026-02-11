@@ -52,24 +52,24 @@ func runConsumeEmails(_ *cobra.Command, args []string) {
 		logrus.WithError(err).Fatal("Failed to configure logging")
 	}
 
-	db, err := sql.Open("mysql", cfg.MySQLDSN)
+	db, err := sql.Open("mysql", cfg.MySQL.DSN)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to connect to database")
 	}
 	defer db.Close()
 
-	db.SetMaxOpenConns(cfg.MySQLMaxOpen)
-	db.SetMaxIdleConns(cfg.MySQLMaxIdle)
-	db.SetConnMaxLifetime(cfg.MySQLMaxLife)
+	db.SetMaxOpenConns(cfg.MySQL.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.MySQL.MaxIdleConns)
+	db.SetConnMaxLifetime(cfg.MySQL.ConnMaxLifetime)
 
 	if err := db.Ping(); err != nil {
 		logrus.WithError(err).Fatal("Failed to ping database")
 	}
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisAddr,
-		Password: cfg.RedisPassword,
-		DB:       cfg.RedisDB,
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
 	})
 	defer rdb.Close()
 
@@ -82,7 +82,7 @@ func runConsumeEmails(_ *cobra.Command, args []string) {
 		logrus.WithError(err).Fatal("Failed to build email provider")
 	}
 
-	emailPreparer := preparer.NewChain(preparer.NewRawPreparer(cfg.SESSourceEmail))
+	emailPreparer := preparer.NewChain(preparer.NewRawPreparer(cfg.EmailProviders.AWS.SourceEmail))
 	emailHistory := repository.NewEmailHistoryRepository(db)
 	locker := lock.NewRedisLocker(rdb)
 	emailService := service.NewEmailService(emailPreparer, emailProvider, emailHistory, locker)
