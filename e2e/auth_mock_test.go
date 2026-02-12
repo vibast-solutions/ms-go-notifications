@@ -22,7 +22,7 @@ const (
 	defaultNotificationsCallerAPIKey   = "notifications-caller-key"
 	defaultNotificationsNoAccessAPIKey = "notifications-no-access-key"
 	defaultNotificationsAppAPIKey      = "notifications-app-api-key"
-	notificationsAuthMockAddr          = "127.0.0.1:38082"
+	notificationsAuthMockAddr          = "0.0.0.0:38082"
 )
 
 func notificationsCallerAPIKey() string {
