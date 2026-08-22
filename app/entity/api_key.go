@@ -26,6 +26,20 @@ type APIKey struct {
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 	RevokedAt  *time.Time
+
+	// Domains is loaded from api_key_domains: the sender domains this key may
+	// use. Empty for admin-only keys.
+	Domains []string
+}
+
+// HasScope reports whether the key carries the given scope.
+func (k *APIKey) HasScope(scope string) bool {
+	for _, s := range k.Scopes {
+		if s == scope {
+			return true
+		}
+	}
+	return false
 }
 
 // APIKeyDomain mirrors the api_key_domains table: one row per sender domain a
