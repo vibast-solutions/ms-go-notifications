@@ -1,0 +1,31 @@
+services:
+  mysql-e2e:
+    image: mysql:8
+    ports:
+      - "13306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: testpass
+      MYSQL_DATABASE: notifications_test
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-ptestpass"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  # The service itself, wired to the e2e MySQL with the log provider.
+  # Behind a profile so `make e2e` starts only MySQL; opt in with
+  # `docker compose -f docker-compose.e2e.yml --profile full up`.
+  notifications-e2e:
+    build: .
+    profiles: [full]
+    depends_on:
+      mysql-e2e:
+        condition: service_healthy
+    environment:
+      DATABASE_DSN: root:testpass@tcp(mysql-e2e:3306)/notifications_test?parseTime=true
+      ALLOWED_DOMAINS: example.com
+      EMAIL_PROVIDER: log
+    ports:
+      - "8080:8080"

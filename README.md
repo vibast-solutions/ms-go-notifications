@@ -1,90 +1,48 @@
-# Notifications Microservice
+# ms-go-notifications
 
-`github.com/vibast-solutions/ms-go-notifications`
+Vibast notifications microservice: accepts email send requests over HTTP, queues them in MySQL, and delivers them through a pluggable provider (AWS SES in production, a log provider in development).
 
-Notifications microservice providing delivery of email/SMS/push notifications via HTTP and gRPC interfaces.
+One Go binary, one MySQL database. There is no external queue — message rows in MySQL are the queue, drained by an in-process worker pool and a sweeper; a claim `UPDATE` acts as the lock so multiple instances are safe.
 
 ## Requirements
 
-- Go 1.25+
+- Go 1.26+
+- MySQL 8 (or Docker for the bundled compose file)
 
-## Build
+## Commands
 
-```bash
-# Download dependencies
-go mod tidy
+The binary ships as cobra subcommands:
 
-# Build native binary
-make build
+| Command | Purpose |
+|---------|---------|
+| `notifications serve` | HTTP API + in-process workers (`--no-worker` for API-only replicas) |
+| `notifications migrate` | Apply embedded database migrations |
 
-# Cross-compile for Linux
-make build-linux-arm64
-make build-linux-amd64
+`apikey` (key management) and `cleanup` (attachment/history retention, cron) arrive in upcoming iterations.
 
-# Cross-compile for macOS
-make build-darwin-arm64
-make build-darwin-amd64
-
-# Build all targets
-make build-all
-
-# Clean build artifacts
-make clean
-```
-
-## Run
+## Development
 
 ```bash
-# Run directly
-go run main.go serve
-
-# Or run the built binary
-./build/notifications-service serve
+make build      # build into build/notifications
+make test       # unit tests
+make lint       # golangci-lint
+make e2e        # start MySQL in Docker, run integration tests, tear down
+make migrate    # apply migrations using DATABASE_DSN from the environment/.env
+make run        # run the HTTP server locally
 ```
 
-The service starts:
-- HTTP server on 0.0.0.0:8080
-- gRPC server on 0.0.0.0:9090
+Configuration is environment-based; copy `.env.dist` to `.env` and fill in values. Required: `DATABASE_DSN` and `ALLOWED_DOMAINS`; set `EMAIL_PROVIDER=log` to print emails to stdout instead of sending.
 
-## Configuration
-
-Set environment variables or use defaults:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| HTTP_HOST | 0.0.0.0 | HTTP server bind address |
-| HTTP_PORT | 8080 | HTTP server port |
-| GRPC_HOST | 0.0.0.0 | gRPC server bind address |
-| GRPC_PORT | 9090 | gRPC server port |
-| AWS_REGION | (required for ses) | AWS region for SES |
-| SES_SOURCE_EMAIL | (required) | Verified sender email for SES |
-| EMAIL_PROVIDER | ses | Email provider: `ses` or `noop` |
-| LOG_LEVEL | info | Log level (trace, debug, info, warn, error, fatal, panic) |
-| MYSQL_MAX_OPEN_CONNS | 10 | Max open DB connections |
-| MYSQL_MAX_IDLE_CONNS | 5 | Max idle DB connections |
-| MYSQL_CONN_MAX_LIFETIME_MINUTES | 30 | Max connection lifetime in minutes |
-
-## Health Check
-
-- `GET /health` returns `{ "status": "ok" }`
-
-## Email Send
-
-- `POST /email/send/raw` with JSON body `{"request_id":"uuid","recipient":"user@example.com","subject":"Hello","content":"Body text"}` sends an HTML email body using SES.
-- Validation: `request_id` is required.
-- Validation: `request_id` must be unique (idempotency); duplicates return 400.
-- Validation: `recipient` must be a valid email address.
-- Validation: `subject` must be at least 4 characters.
-- Validation: `content` must be at least 11 characters.
-
-## gRPC
-
-Generate protobuf/grpc files:
+## Docker
 
 ```bash
-./scripts/gen_proto.sh
+docker build -t ms-go-notifications .
+docker compose -f docker-compose.e2e.yml up -d --wait mysql-e2e   # local MySQL for tests
 ```
 
-Service:
-`NotificationsService.SendRawEmail` with `request_id`, `recipient`, `subject`, `content`.
-Response includes `success` and `error_message`.
+## API
+
+- `GET /healthz` — liveness + DB reachability (`200 {"status":"ok","db":"ok"}` / `503`)
+- `/v1/*` — versioned API (responses carry `X-API-Version: 1`); endpoints land in upcoming iterations
+
+Errors use a stable envelope: `{"error": "<code>", "message": "<text>", "fields": {…}}`.
