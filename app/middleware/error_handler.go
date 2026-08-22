@@ -1,6 +1,6 @@
 // Package middleware holds the HTTP middleware shared by all API versions:
-// request id, the JSON error handler, and the X-API-Version header. Auth
-// (bearer keys + scopes) arrives in VIB-7.
+// request id, the JSON error handler, the X-API-Version header, and bearer
+// API key auth with scopes (auth.go).
 package middleware
 
 import (

@@ -17,8 +17,25 @@ The binary ships as cobra subcommands:
 |---------|---------|
 | `notifications serve` | HTTP API + in-process workers (`--no-worker` for API-only replicas) |
 | `notifications migrate` | Apply embedded database migrations |
+| `notifications apikey` | Manage API keys (see below) |
 
-`apikey` (key management) and `cleanup` (attachment/history retention, cron) arrive in upcoming iterations.
+`cleanup` (attachment/history retention, cron) arrives in an upcoming iteration.
+
+## API keys
+
+Every API request is authorised by a bearer API key with scopes (`send`, `admin`). A `send` key owns an explicit list of sender domains — no wildcards — each of which must be in the service's `ALLOWED_DOMAINS`. Only the SHA-256 hash of a key is stored; the plaintext (`ntf_<prefix>_<secret>`) is printed exactly once at creation.
+
+Keys are managed by the operator via the CLI (uses `DATABASE_DSN` and `ALLOWED_DOMAINS` from the environment/`.env`):
+
+```bash
+notifications apikey create --name backend --scopes send --domains example.com,mail.example.com
+notifications apikey create --name ops --scopes admin
+notifications apikey list
+notifications apikey set-domains <id> --domains example.com
+notifications apikey revoke <id>
+```
+
+Requests authenticate with `Authorization: Bearer ntf_…`; `GET /v1/whoami` echoes the key's id, name, scopes and domains (handy as an SDK smoke test). Revoked keys fail immediately on the instance that revoked them and within 30 seconds on others (auth cache TTL); `last_used_at` is updated at most once per minute per key.
 
 ## Development
 
@@ -42,7 +59,8 @@ docker compose -f docker-compose.e2e.yml up -d --wait mysql-e2e   # local MySQL 
 
 ## API
 
-- `GET /healthz` — liveness + DB reachability (`200 {"status":"ok","db":"ok"}` / `503`)
-- `/v1/*` — versioned API (responses carry `X-API-Version: 1`); endpoints land in upcoming iterations
+- `GET /healthz` — liveness + DB reachability (`200 {"status":"ok","db":"ok"}` / `503`), unauthenticated
+- `GET /v1/whoami` — authenticated key's id/name/scopes/domains
+- `/v1/*` — versioned API (responses carry `X-API-Version: 1`), bearer-authenticated; more endpoints land in upcoming iterations
 
 Errors use a stable envelope: `{"error": "<code>", "message": "<text>", "fields": {…}}`.
