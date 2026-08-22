@@ -89,6 +89,14 @@ make migrate    # go run ./cmd/notifications migrate
 - `make e2e` starts only the MySQL container (`mysql-e2e`, port 13306), runs the tests, tears down
 - New migrations/tables: extend the table list in `e2e/migrate_test.go`
 
+## Public Repo
+
+This repository is **public** (deliberate decision, 2026-08-22). Everything pushed here — code, comments, commit messages, PR titles/bodies — is world-readable:
+
+- No private filesystem paths from the dev environment; repo-relative paths only
+- No Jira/Confluence links; plain ticket keys (`VIB-6`) are fine
+- No secrets, credentials, DSNs with real values, or internal infrastructure details
+
 ## Do NOT
 
 - **Never run the server on this VM** — build, tests, lint only; no `go run … serve`, no compose `--profile full`
