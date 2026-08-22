@@ -1,6 +1,16 @@
 // Command notifications is the Vibast notifications microservice binary.
 // Subcommands: serve (HTTP API + in-process workers), migrate (apply DB
 // migrations), apikey (manage API keys). cleanup arrives in a later story.
+//
+//	@title			Vibast Notifications API
+//	@version		1.0
+//	@description	Transactional email API for the Vibast notifications service. All routes require a bearer API key.
+//	@BasePath		/v1
+//
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				Bearer API key, e.g. "Authorization: Bearer ntf_xxxxxxxx_…".
 package main
 
 import (

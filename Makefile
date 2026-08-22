@@ -19,8 +19,8 @@ lint: ## Run golangci-lint
 	golangci-lint run
 
 .PHONY: swagger
-swagger: ## Regenerate swagger docs (placeholder until VIB-8 adds the first API)
-	@echo "swagger generation arrives with the first API story (VIB-8)"
+swagger: ## Regenerate swagger docs into docs/ (needs swaggo/swag v2)
+	swag init -g cmd/notifications/main.go -o docs --parseDependency --parseInternal --parseDepth 3
 
 .PHONY: e2e-up
 e2e-up: ## Start the e2e MySQL container
