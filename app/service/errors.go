@@ -12,6 +12,12 @@ var (
 	ErrAPIKeyRevoked = errors.New("api key revoked")
 	// ErrNotFound is returned when an id does not resolve to a record.
 	ErrNotFound = errors.New("not found")
+	// ErrDomainNotAllowed is returned when the from address's domain is not in
+	// the calling key's domain list. Maps to 403 domain_not_allowed.
+	ErrDomainNotAllowed = errors.New("sender domain not allowed for this api key")
+	// ErrPayloadTooLarge is returned when the decoded payload (bodies +
+	// attachments) exceeds MAX_PAYLOAD_BYTES. Maps to 413 payload_too_large.
+	ErrPayloadTooLarge = errors.New("payload too large")
 )
 
 // ValidationError carries field→message details for invalid input, mirroring
