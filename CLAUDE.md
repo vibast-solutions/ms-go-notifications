@@ -9,7 +9,7 @@ Notifications microservice for Vibast: accepts email send requests over HTTP, qu
 ## Tech Stack
 
 - Go 1.26, Echo v5, MySQL 8 (raw SQL, no ORM)
-- cobra subcommands: `serve` (HTTP + in-process workers; `--no-worker` for API-only), `migrate`; `apikey` and `cleanup` arrive in later stories
+- cobra subcommands: `serve` (HTTP + in-process workers; `--no-worker` for API-only), `migrate`, `apikey` (create/list/revoke/set-domains — operator key management); `cleanup` arrives in a later story
 - golang-migrate with migrations embedded via `embed.FS`
 - logrus (JSON in prod), godotenv for local dev
 - IDs are ULIDs stored as `CHAR(26)`; timestamps `DATETIME(3)` UTC
@@ -24,7 +24,7 @@ app/repository/        → SQL data access (one file per aggregate)
 app/service/           → business logic, interfaces, domain errors
 app/dto/v1/            → request/response DTOs for API v1 (Validate())
 app/controller/v1/     → HTTP handlers for /v1 (thin)
-app/middleware/        → request id, error handler, API version; auth in VIB-7
+app/middleware/        → request id, error handler, API version, bearer auth (auth.go)
 pkg/provider/          → EmailProvider interface; ses/log impls in VIB-9
 pkg/sns/               → SNS envelope parsing + signature verification (later)
 pkg/mime/              → raw MIME builder (later)
@@ -66,6 +66,12 @@ DTOs have `Validate() map[string]string` — returns nil on success, field→mes
 
 ### Config
 `config.Load()` fails fast and reports every problem at once. Required: `DATABASE_DSN`, `ALLOWED_DOMAINS`; `EMAIL_PROVIDER` ∈ {ses, log}; `AWS_REGION` required when ses. See `.env.dist` for all variables.
+
+### API key auth (VIB-7)
+- Plaintext keys `ntf_<8 [a-z0-9]>_<32 [A-Za-z0-9]>`; only prefix + sha256 hex stored (`api_keys`); domains in `api_key_domains`, each ∈ `ALLOWED_DOMAINS`, no wildcards; `send` keys need ≥1 domain, admin-only keys none
+- `service.APIKeyService.Authenticate`: prefix lookup with 30 s in-memory cache, constant-time hash compare; `Revoke`/`ReplaceDomains` evict the cache
+- Routes opt in per-route: `v1.GET("/x", h, auth.Require("send"))`; `auth.Require("")` = any valid key; handler reads the key via `middleware.GetAPIKey(c)`; `last_used_at` throttled to 1/min per key in the middleware
+- Keys are created via `notifications apikey` CLI only (admin HTTP endpoints come in VIB-12)
 
 ## Migrations
 
