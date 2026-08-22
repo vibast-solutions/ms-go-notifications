@@ -1,0 +1,8 @@
+# env files with real values (template .env.dist is committed)
+.env
+.env.*
+!.env.dist
+
+# build artifacts
+build/
+/notifications
