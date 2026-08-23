@@ -57,6 +57,30 @@ type SuppressionRepository interface {
 	FindByEmails(ctx context.Context, emails []string) ([]*entity.Suppression, error)
 }
 
+// EventMessageRepository is the persistence contract the event service uses to
+// match provider events to a message and update per-recipient/message state.
+// Implemented by repository.MessageRepository.
+type EventMessageRepository interface {
+	FindByProviderMessageID(ctx context.Context, providerMessageID string) (*entity.Message, error)
+	SetRecipientStatus(ctx context.Context, messageID, email, status string,
+		bounceType, bounceSubtype, diagnostic *string, at time.Time) error
+	SetLastError(ctx context.Context, messageID, lastError string, at time.Time) error
+}
+
+// EventStore appends message events. A duplicate on the
+// (provider_event_id, recipient_email) unique index must surface as
+// repository.ErrDuplicateKey so the event service can dedupe redelivered SNS
+// messages. Implemented by repository.EventRepository.
+type EventStore interface {
+	Insert(ctx context.Context, ev *entity.MessageEvent) error
+}
+
+// SuppressionWriter records automatic suppressions with an idempotent upsert.
+// Implemented by repository.SuppressionRepository.
+type SuppressionWriter interface {
+	Upsert(ctx context.Context, s *entity.Suppression) error
+}
+
 // Dispatcher hands a committed, queued message id to the in-process worker
 // pool. Implemented by internal/worker (NoopDispatcher for `serve --no-worker`,
 // the real pool otherwise). Enqueue is a non-blocking best-effort hand-off: it
