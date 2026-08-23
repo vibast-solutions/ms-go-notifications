@@ -51,6 +51,22 @@ The pool is intentionally **bounded**: throughput scales with `WORKER_CONCURRENC
 
 `serve --no-worker` runs the HTTP API without the pool/sweeper, for API-only replicas; a worker instance elsewhere drains the shared queue.
 
+## Provider events (SES via SNS)
+
+SES publishes per-message events (delivery, bounce, complaint, delivery delay, reject) to an SNS topic, which POSTs them to `POST /v1/webhooks/ses`. This closes the feedback loop: recipient statuses are updated and permanent bounces / complaints grow the suppression list so future sends skip those addresses.
+
+The webhook has **no bearer auth** — the SNS message signature is the credential:
+
+1. The SNS signature is verified against the message's signing certificate (`SignatureVersion` 1 = SHA1withRSA, 2 = SHA256withRSA). The certificate URL must be `https` on an `sns.<region>.amazonaws.com` host, and the certificate is cached after first download.
+2. The message's `TopicArn` must be listed in `SNS_ALLOWED_TOPIC_ARNS` (comma-separated). An empty list rejects everything — set it before pointing SNS at the service.
+3. `SubscriptionConfirmation` messages for an allowed topic are auto-confirmed (the service GETs the `SubscribeURL`). `Notification` messages are parsed and applied.
+
+Responses: `403` on a bad signature or a disallowed topic, `400` on a malformed body, and `200` once a message is verified — including for an unknown message id (logged and dropped, so SNS does not retry a message the service can never match). Duplicate SNS deliveries are ignored via a unique index on `(provider_event_id, recipient_email)`. Transient bounces update the recipient status but never suppress.
+
+### AWS setup
+
+The SES configuration set, SNS topic, event destination and IAM permissions are provisioned outside this repo — see the **Notifications Technical Design, §7 infrastructure checklist** (tracked by ticket **VIB-13**). In short: create an SNS topic, attach it as the event destination of the SES configuration set named in `SES_CONFIGURATION_SET` (subscribing to at least Delivery, Bounce, Complaint, DeliveryDelay, Reject), subscribe the topic to `https://<host>/v1/webhooks/ses`, and add the topic ARN to `SNS_ALLOWED_TOPIC_ARNS`.
+
 ## Retention
 
 `cleanup` is a cron command that keeps the database small. It runs in batches (`--batch`, default 1000) with a short pause between them, prints the totals, and exits non-zero on error. `--older-than` below `24h` is refused.
@@ -94,6 +110,7 @@ docker compose -f docker-compose.e2e.yml up -d --wait mysql-e2e   # local MySQL 
 
 - `GET /healthz` — liveness + DB reachability (`200 {"status":"ok","db":"ok"}` / `503`), unauthenticated
 - `GET /v1/whoami` — authenticated key's id/name/scopes/domains
+- `POST /v1/webhooks/ses` — SES event webhook (SNS), authenticated by SNS signature (see [Provider events](#provider-events-ses-via-sns))
 - `/v1/*` — versioned API (responses carry `X-API-Version: 1`), bearer-authenticated; more endpoints land in upcoming iterations
 
 Errors use a stable envelope: `{"error": "<code>", "message": "<text>", "fields": {…}}`.

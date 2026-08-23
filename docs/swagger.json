@@ -134,6 +134,35 @@
                     }
                 }
             }
+        },
+        "/webhooks/ses": {
+            "post": {
+                "description": "Receives AWS SNS deliveries carrying SES events. The SNS signature is verified and the topic ARN checked against the allow-list; there is no bearer auth. SubscriptionConfirmation messages are auto-confirmed; Notification messages update message/recipient state. Returns 200 once a message is verified (even for an unknown message id), 403 on a bad signature or disallowed topic, and 400 on a malformed body.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "SES event webhook (SNS)",
+                "responses": {
+                    "200": {
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "description": "Malformed SNS envelope"
+                    },
+                    "403": {
+                        "description": "Bad signature or disallowed topic"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    }
+                }
+            }
         }
     },
     "definitions": {
