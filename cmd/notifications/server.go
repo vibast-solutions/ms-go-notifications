@@ -62,10 +62,36 @@ func newServer(cfg *config.Config, db *sql.DB, dispatcher service.Dispatcher, re
 	// Admin group (scope admin). VIB-11 adds the reputation circuit-breaker
 	// endpoints; VIB-12 extends this group with messages/stats/suppressions/keys.
 	admin := v1.Group("/admin")
+	requireAdmin := auth.Require("admin")
+
 	sendingCtl := controllerv1.NewAdminSendingController(reputation)
-	admin.GET("/sending", sendingCtl.Get, auth.Require("admin"))
-	admin.POST("/sending/pause", sendingCtl.Pause, auth.Require("admin"))
-	admin.POST("/sending/resume", sendingCtl.Resume, auth.Require("admin"))
+	admin.GET("/sending", sendingCtl.Get, requireAdmin)
+	admin.POST("/sending/pause", sendingCtl.Pause, requireAdmin)
+	admin.POST("/sending/resume", sendingCtl.Resume, requireAdmin)
+
+	messageRepo := repository.NewMessageRepository(db)
+	suppressionRepo := repository.NewSuppressionRepository(db)
+	adminSvc := service.NewAdminService(messageRepo, suppressionRepo, keys, reputation, dispatcher)
+
+	messagesCtl := controllerv1.NewAdminMessagesController(adminSvc)
+	admin.GET("/messages", messagesCtl.List, requireAdmin)
+	admin.GET("/messages/:id", messagesCtl.Get, requireAdmin)
+	admin.GET("/messages/:id/attachments/:attachmentId", messagesCtl.DownloadAttachment, requireAdmin)
+	admin.POST("/messages/:id/retry", messagesCtl.Retry, requireAdmin)
+
+	statsCtl := controllerv1.NewAdminStatsController(adminSvc)
+	admin.GET("/stats", statsCtl.Get, requireAdmin)
+
+	suppressionsCtl := controllerv1.NewAdminSuppressionsController(adminSvc)
+	admin.GET("/suppressions", suppressionsCtl.List, requireAdmin)
+	admin.POST("/suppressions", suppressionsCtl.Create, requireAdmin)
+	admin.DELETE("/suppressions/:email", suppressionsCtl.Delete, requireAdmin)
+
+	keysCtl := controllerv1.NewAdminKeysController(keys)
+	admin.GET("/api-keys", keysCtl.List, requireAdmin)
+	admin.POST("/api-keys", keysCtl.Create, requireAdmin)
+	admin.PUT("/api-keys/:id/domains", keysCtl.ReplaceDomains, requireAdmin)
+	admin.DELETE("/api-keys/:id", keysCtl.Revoke, requireAdmin)
 
 	// SES event webhook (SNS). No bearer auth — the SNS signature and the topic
 	// allow-list are the credential. Wired here (not in the worker) so ingestion
