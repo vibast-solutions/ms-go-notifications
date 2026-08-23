@@ -2,9 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v5"
 	echomw "github.com/labstack/echo/v5/middleware"
+	log "github.com/sirupsen/logrus"
 
 	controllerv1 "github.com/vibast-solutions/ms-go-notifications/app/controller/v1"
 	dtov1 "github.com/vibast-solutions/ms-go-notifications/app/dto/v1"
@@ -12,7 +15,13 @@ import (
 	"github.com/vibast-solutions/ms-go-notifications/app/repository"
 	"github.com/vibast-solutions/ms-go-notifications/app/service"
 	"github.com/vibast-solutions/ms-go-notifications/config"
+	"github.com/vibast-solutions/ms-go-notifications/pkg/sns"
 )
+
+// snsHTTPTimeout bounds the outbound calls the SNS webhook makes: the signing
+// certificate download and the subscription-confirmation GET (Business Logic §7
+// / API v1: 10 s).
+const snsHTTPTimeout = 10 * time.Second
 
 // newServer wires the Echo instance: global middleware, /healthz and the /v1
 // group with bearer auth. Routes opt into scopes with auth.Require(<scope>). The
@@ -49,6 +58,20 @@ func newServer(cfg *config.Config, db *sql.DB, dispatcher service.Dispatcher) *e
 	whoami := controllerv1.NewWhoamiController()
 	// Any valid key may call whoami (empty scope = authentication only).
 	v1.GET("/whoami", whoami.Whoami, auth.Require(""))
+
+	// SES event webhook (SNS). No bearer auth — the SNS signature and the topic
+	// allow-list are the credential. Wired here (not in the worker) so ingestion
+	// works even in --no-worker mode.
+	events := service.NewEventService(
+		repository.NewMessageRepository(db),
+		repository.NewEventRepository(db),
+		repository.NewSuppressionRepository(db),
+		log.StandardLogger(),
+	)
+	verifier := sns.NewVerifier(&http.Client{Timeout: snsHTTPTimeout})
+	topics := sns.NewTopicAllowList(cfg.SNSAllowedTopicARNs)
+	webhooks := controllerv1.NewWebhooksController(verifier, topics, events, log.StandardLogger())
+	v1.POST("/webhooks/ses", webhooks.SES)
 
 	if cfg.SwaggerEnabled {
 		registerSwagger(e)
