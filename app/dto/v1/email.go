@@ -334,6 +334,14 @@ func (r *SendEmailRequest) DecodedPayloadBytes() int {
 // normalizeEmail trims and lower-cases an address for comparison and storage.
 func normalizeEmail(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
 
+// NormalizeEmail trims and lower-cases an address. Exported so other packages
+// (the admin service) normalize addresses the same way the accept path does.
+func NormalizeEmail(s string) string { return normalizeEmail(s) }
+
+// ValidEmail reports whether s is a bare RFC 5322 addr-spec (no display name).
+// Exported for reuse by the admin service's manual-suppression validation.
+func ValidEmail(s string) bool { return validEmail(s) }
+
 // validEmail reports whether s is a bare RFC 5322 addr-spec (no display name).
 func validEmail(s string) bool {
 	if s == "" {
