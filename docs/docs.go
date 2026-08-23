@@ -16,6 +16,154 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/sending": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the reputation circuit-breaker state: whether sending is paused and, if so, the reason, since when, and who paused it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get sending state",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/sending/pause": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Manually pauses sending. Queued and newly accepted messages accumulate until sending is resumed. An optional reason is recorded.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Pause sending",
+                "parameters": [
+                    {
+                        "description": "Optional pause reason",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.PauseSendingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "bad_request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/sending/resume": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Manually resumes sending after an automatic or manual pause. The sweeper re-dispatches the queued backlog.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Resume sending",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/emails": {
             "post": {
                 "security": [
@@ -303,6 +451,14 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.PauseSendingRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.RecipientResponse": {
             "type": "object",
             "properties": {
@@ -401,6 +557,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse": {
+            "type": "object",
+            "properties": {
+                "by": {
+                    "type": "string"
+                },
+                "paused": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "since": {
                     "type": "string"
                 }
             }

@@ -85,6 +85,11 @@ definitions:
       type:
         type: string
     type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.PauseSendingRequest:
+    properties:
+      reason:
+        type: string
+    type: object
   github_com_vibast-solutions_ms-go-notifications_app_dto_v1.RecipientResponse:
     properties:
       email:
@@ -152,6 +157,17 @@ definitions:
       status:
         type: string
     type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse:
+    properties:
+      by:
+        type: string
+      paused:
+        type: boolean
+      reason:
+        type: string
+      since:
+        type: string
+    type: object
 info:
   contact: {}
   description: Transactional email API for the Vibast notifications service. All routes
@@ -159,6 +175,102 @@ info:
   title: Vibast Notifications API
   version: "1.0"
 paths:
+  /admin/sending:
+    get:
+      description: 'Returns the reputation circuit-breaker state: whether sending
+        is paused and, if so, the reason, since when, and who paused it.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get sending state
+      tags:
+      - admin
+  /admin/sending/pause:
+    post:
+      consumes:
+      - application/json
+      description: Manually pauses sending. Queued and newly accepted messages accumulate
+        until sending is resumed. An optional reason is recorded.
+      parameters:
+      - description: Optional pause reason
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.PauseSendingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse'
+        "400":
+          description: bad_request
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Pause sending
+      tags:
+      - admin
+  /admin/sending/resume:
+    post:
+      description: Manually resumes sending after an automatic or manual pause. The
+        sweeper re-dispatches the queued backlog.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Resume sending
+      tags:
+      - admin
   /emails:
     post:
       consumes:
