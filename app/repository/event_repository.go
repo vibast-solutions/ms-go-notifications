@@ -20,7 +20,11 @@ func NewEventRepository(db *sql.DB) *EventRepository {
 	return &EventRepository{db: db}
 }
 
-// Insert appends one event. A nil Payload is stored as SQL NULL.
+// Insert appends one event. A nil Payload is stored as SQL NULL. A duplicate on
+// the (provider_event_id, recipient_email) unique index surfaces as
+// ErrDuplicateKey, which webhook ingestion uses to dedupe redelivered SNS
+// messages. (Processor attempt events carry a NULL provider_event_id, which
+// MySQL never treats as a duplicate, so they are unaffected.)
 func (r *EventRepository) Insert(ctx context.Context, ev *entity.MessageEvent) error {
 	var payload any
 	if len(ev.Payload) > 0 {
@@ -32,6 +36,9 @@ func (r *EventRepository) Insert(ctx context.Context, ev *entity.MessageEvent) e
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		ev.ID, ev.MessageID, ev.RecipientEmail, ev.Type, ev.ProviderEventID, payload, ev.OccurredAt, ev.CreatedAt)
 	if err != nil {
+		if isDuplicateKey(err) {
+			return ErrDuplicateKey
+		}
 		return fmt.Errorf("inserting event: %w", err)
 	}
 	return nil

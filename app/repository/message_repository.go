@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/vibast-solutions/ms-go-notifications/app/entity"
 )
@@ -124,6 +125,45 @@ func (r *MessageRepository) FindByID(ctx context.Context, id string) (*entity.Me
 // when the id is unknown or belongs to another key (so callers 404 both).
 func (r *MessageRepository) FindByIDForAPIKey(ctx context.Context, id, apiKeyID string) (*entity.Message, error) {
 	return scanMessage(r.db.QueryRowContext(ctx, messageSelect+` WHERE id = ? AND api_key_id = ?`, id, apiKeyID))
+}
+
+// FindByProviderMessageID loads the message carrying the given provider message
+// id (the SES message id events reference). Returns sql.ErrNoRows when no
+// message matches — the caller logs and drops the event. The newest match wins
+// in the unlikely event of a collision.
+func (r *MessageRepository) FindByProviderMessageID(ctx context.Context, providerMessageID string) (*entity.Message, error) {
+	return scanMessage(r.db.QueryRowContext(ctx,
+		messageSelect+` WHERE provider_message_id = ? ORDER BY created_at DESC LIMIT 1`, providerMessageID))
+}
+
+// SetRecipientStatus updates a recipient's delivery state from a provider
+// event: it sets status and last_event_at, and (re)sets the bounce/diagnostic
+// columns to the supplied values (nil clears them). It matches on
+// (message_id, email); an event listing an address the message never had simply
+// affects no rows.
+func (r *MessageRepository) SetRecipientStatus(ctx context.Context, messageID, email, status string,
+	bounceType, bounceSubtype, diagnostic *string, at time.Time) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE message_recipients
+		    SET status = ?, bounce_type = ?, bounce_subtype = ?, diagnostic = ?, last_event_at = ?
+		  WHERE message_id = ? AND email = ?`,
+		status, bounceType, bounceSubtype, diagnostic, at, messageID, email)
+	if err != nil {
+		return fmt.Errorf("updating recipient status: %w", err)
+	}
+	return nil
+}
+
+// SetLastError records a provider-side rejection reason on the message
+// (Business Logic §7: Reject sets last_error without changing the status).
+func (r *MessageRepository) SetLastError(ctx context.Context, messageID, lastError string, at time.Time) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE messages SET last_error = ?, updated_at = ? WHERE id = ?`,
+		lastError, at, messageID)
+	if err != nil {
+		return fmt.Errorf("updating last_error: %w", err)
+	}
+	return nil
 }
 
 // FindByIdempotency loads the message stored under (apiKeyID, key). Returns

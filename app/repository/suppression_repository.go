@@ -19,6 +19,22 @@ func NewSuppressionRepository(db *sql.DB) *SuppressionRepository {
 	return &SuppressionRepository{db: db}
 }
 
+// Upsert inserts a suppression, keeping the existing row (and its original
+// reason/source) when the address is already suppressed. Automatic suppressions
+// from bounce/complaint events are idempotent: a redelivered event that reaches
+// this point must not overwrite or error on the existing entry.
+func (r *SuppressionRepository) Upsert(ctx context.Context, s *entity.Suppression) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO suppressions (email, reason, source_message_id, note, created_at, expires_at)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON DUPLICATE KEY UPDATE email = email`,
+		s.Email, s.Reason, s.SourceMessageID, s.Note, s.CreatedAt, s.ExpiresAt)
+	if err != nil {
+		return fmt.Errorf("upserting suppression: %w", err)
+	}
+	return nil
+}
+
 // FindByEmails returns the suppressions matching any of emails. Lookup is
 // exact on the stored (lower-cased) address; callers normalize first. An empty
 // input returns no rows without hitting the database.

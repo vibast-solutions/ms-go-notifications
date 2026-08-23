@@ -110,6 +110,60 @@ func TestFindByIDForAPIKeyScansJSONColumns(t *testing.T) {
 	assert.Equal(t, json.RawMessage(`{"n":1}`), msg.Metadata)
 }
 
+func TestFindByProviderMessageID(t *testing.T) {
+	repo, mock := newMessageRepo(t)
+
+	rows := sqlmock.NewRows(messageColumns()).AddRow(
+		"01MSG", "01KEY", "email", "sent", "ses", "ses-msg-1",
+		"no-reply@vibast.ro", nil, "vibast.ro", nil, "Hi", nil, nil,
+		nil, nil, nil, nil, 1, nil,
+		nil, nil, nil, 1,
+		testTime, testTime, testTime, nil,
+	)
+	mock.ExpectQuery("SELECT .+ FROM messages WHERE provider_message_id = \\? ORDER BY created_at DESC LIMIT 1").
+		WithArgs("ses-msg-1").WillReturnRows(rows)
+
+	msg, err := repo.FindByProviderMessageID(context.Background(), "ses-msg-1")
+	require.NoError(t, err)
+	assert.Equal(t, "01MSG", msg.ID)
+	require.NotNil(t, msg.ProviderMessageID)
+	assert.Equal(t, "ses-msg-1", *msg.ProviderMessageID)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestFindByProviderMessageIDNotFound(t *testing.T) {
+	repo, mock := newMessageRepo(t)
+	mock.ExpectQuery("SELECT .+ FROM messages WHERE provider_message_id = \\?").
+		WithArgs("missing").WillReturnError(sql.ErrNoRows)
+
+	_, err := repo.FindByProviderMessageID(context.Background(), "missing")
+	assert.ErrorIs(t, err, sql.ErrNoRows)
+}
+
+func TestSetRecipientStatus(t *testing.T) {
+	repo, mock := newMessageRepo(t)
+	bt, bst, diag := "Permanent", "General", "smtp; 550"
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE message_recipients")).
+		WithArgs("bounced", &bt, &bst, &diag, testTime, "01MSG", "bad@example.com").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.SetRecipientStatus(context.Background(), "01MSG", "bad@example.com", "bounced",
+		&bt, &bst, &diag, testTime)
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSetLastError(t *testing.T) {
+	repo, mock := newMessageRepo(t)
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE messages SET last_error = ?, updated_at = ? WHERE id = ?")).
+		WithArgs("Bad content", testTime, "01MSG").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.SetLastError(context.Background(), "01MSG", "Bad content", testTime)
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestFindByIdempotencyNotFound(t *testing.T) {
 	repo, mock := newMessageRepo(t)
 	mock.ExpectQuery("SELECT .+ FROM messages WHERE api_key_id = \\? AND idempotency_key = \\?").

@@ -8,6 +8,8 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/vibast-solutions/ms-go-notifications/app/entity"
 )
 
 func TestFindByEmailsEmptyShortCircuits(t *testing.T) {
@@ -20,6 +22,25 @@ func TestFindByEmailsEmptyShortCircuits(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, got)
 	assert.NoError(t, mock.ExpectationsWereMet(), "empty input must not query the database")
+}
+
+func TestSuppressionUpsert(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	repo := NewSuppressionRepository(db)
+
+	src := "01MSG"
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO suppressions")).
+		WithArgs("bad@example.com", "hard_bounce", &src, nil, testTime, nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = repo.Upsert(context.Background(), &entity.Suppression{
+		Email: "bad@example.com", Reason: entity.SuppressionReasonHardBounce,
+		SourceMessageID: &src, CreatedAt: testTime,
+	})
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestFindByEmailsReturnsMatches(t *testing.T) {
