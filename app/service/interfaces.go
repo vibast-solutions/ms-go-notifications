@@ -58,9 +58,11 @@ type SuppressionRepository interface {
 }
 
 // Dispatcher hands a committed, queued message id to the in-process worker
-// pool. Implemented by internal/worker (NoopDispatcher until VIB-9 provides the
-// real pool). Declared here so the accept path depends only on the behaviour,
-// not on the worker package.
+// pool. Implemented by internal/worker (NoopDispatcher for `serve --no-worker`,
+// the real pool otherwise). Enqueue is a non-blocking best-effort hand-off: it
+// returns false when the pool is saturated, in which case the sweeper picks the
+// row up from the database. The accept path ignores the result. Declared here
+// so the accept path depends only on the behaviour, not on the worker package.
 type Dispatcher interface {
-	Enqueue(id string)
+	Enqueue(id string) bool
 }

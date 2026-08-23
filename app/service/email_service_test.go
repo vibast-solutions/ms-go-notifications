@@ -101,7 +101,7 @@ func (f *fakeSuppressions) FindByEmails(_ context.Context, emails []string) ([]*
 // fakeDispatcher records enqueued ids.
 type fakeDispatcher struct{ ids []string }
 
-func (f *fakeDispatcher) Enqueue(id string) { f.ids = append(f.ids, id) }
+func (f *fakeDispatcher) Enqueue(id string) bool { f.ids = append(f.ids, id); return true }
 
 func sendKey() *entity.APIKey {
 	return &entity.APIKey{ID: "01APIKEY", Scopes: []string{"send"}, Domains: []string{"vibast.ro"}}
