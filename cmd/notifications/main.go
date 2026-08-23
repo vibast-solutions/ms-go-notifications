@@ -1,6 +1,6 @@
 // Command notifications is the Vibast notifications microservice binary.
 // Subcommands: serve (HTTP API + in-process workers), migrate (apply DB
-// migrations), apikey (manage API keys). cleanup arrives in a later story.
+// migrations), apikey (manage API keys), cleanup (retention cron).
 //
 //	@title			Vibast Notifications API
 //	@version		1.0
@@ -33,7 +33,7 @@ func main() {
 		SilenceErrors: false,
 	}
 
-	rootCmd.AddCommand(newServeCmd(), newMigrateCmd(), newAPIKeyCmd())
+	rootCmd.AddCommand(newServeCmd(), newMigrateCmd(), newAPIKeyCmd(), newCleanupCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

@@ -12,12 +12,13 @@ import (
 	"github.com/vibast-solutions/ms-go-notifications/app/repository"
 	"github.com/vibast-solutions/ms-go-notifications/app/service"
 	"github.com/vibast-solutions/ms-go-notifications/config"
-	"github.com/vibast-solutions/ms-go-notifications/internal/worker"
 )
 
 // newServer wires the Echo instance: global middleware, /healthz and the /v1
-// group with bearer auth. Routes opt into scopes with auth.Require(<scope>).
-func newServer(cfg *config.Config, db *sql.DB) *echo.Echo {
+// group with bearer auth. Routes opt into scopes with auth.Require(<scope>). The
+// dispatcher is the in-process worker pool (or a no-op in --no-worker mode); the
+// accept path hands committed message ids to it.
+func newServer(cfg *config.Config, db *sql.DB, dispatcher service.Dispatcher) *echo.Echo {
 	e := echo.New()
 	e.HTTPErrorHandler = appmw.ErrorHandler
 
@@ -28,12 +29,10 @@ func newServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	keys := service.NewAPIKeyService(repository.NewAPIKeyRepository(db), cfg.AllowedDomains)
 	auth := appmw.NewAuth(keys)
 
-	// The dispatcher is a no-op until VIB-9 wires the real worker pool; the
-	// accept path still stores messages and the sweeper will drain them.
 	emails := service.NewEmailService(
 		repository.NewMessageRepository(db),
 		repository.NewSuppressionRepository(db),
-		worker.NoopDispatcher{},
+		dispatcher,
 		dtov1.Limits{MaxRecipients: cfg.MaxRecipients, MaxPayloadBytes: cfg.MaxPayloadBytes},
 	)
 
