@@ -77,3 +77,23 @@ func TestMigrateCreatesAllTables(t *testing.T) {
 	// Running again must be a no-op, not an error.
 	require.NoError(t, migrations.Run(db))
 }
+
+// TestMigrateAddsSentAtIndex verifies the reputation-denominator index from
+// 002_messages_sent_at_index is present after migrate, so m.sent_at >= ? can
+// range-scan instead of full-scanning messages.
+func TestMigrateAddsSentAtIndex(t *testing.T) {
+	db := openDB(t)
+
+	require.NoError(t, migrations.Run(db))
+
+	var count int
+	err := db.QueryRow(
+		`SELECT COUNT(*)
+		   FROM information_schema.statistics
+		  WHERE table_schema = DATABASE()
+		    AND table_name = 'messages'
+		    AND index_name = 'ix_messages_sent'
+		    AND column_name = 'sent_at'`).Scan(&count)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count, "ix_messages_sent (sent_at) missing on messages after migrate")
+}
