@@ -4,10 +4,13 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v5"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/vibast-solutions/ms-go-notifications/app/service"
 )
 
 // errorBody is the standard error envelope returned to API clients:
@@ -29,6 +32,12 @@ func ErrorHandler(c *echo.Context, err error) {
 		return
 	}
 
+	// Domain errors from the service layer carry their own semantic code (and,
+	// for validation, field details) so the envelope stays meaningful.
+	if handleServiceError(c, err) {
+		return
+	}
+
 	code := http.StatusInternalServerError
 	body := errorBody{
 		Error:   "internal_error",
@@ -47,6 +56,8 @@ func ErrorHandler(c *echo.Context, err error) {
 			body.Error = "forbidden"
 		case http.StatusNotFound:
 			body.Error = "not_found"
+		case http.StatusGone:
+			body.Error = "gone"
 		case http.StatusMethodNotAllowed:
 			body.Error = "method_not_allowed"
 		case http.StatusRequestEntityTooLarge:
@@ -69,4 +80,51 @@ func ErrorHandler(c *echo.Context, err error) {
 	}
 
 	_ = c.JSON(code, body)
+}
+
+// handleServiceError writes the envelope for a known service domain error and
+// reports whether it handled err. Unknown errors are left to the caller.
+func handleServiceError(c *echo.Context, err error) bool {
+	var ve *service.ValidationError
+	switch {
+	case errors.As(err, &ve):
+		_ = c.JSON(http.StatusBadRequest, errorBody{
+			Error:   "validation_error",
+			Message: "one or more fields are invalid",
+			Fields:  ve.Fields,
+		})
+	case errors.Is(err, service.ErrDomainNotAllowed):
+		_ = c.JSON(http.StatusForbidden, errorBody{
+			Error:   "domain_not_allowed",
+			Message: "the sender domain is not allowed for this API key",
+		})
+	case errors.Is(err, service.ErrPayloadTooLarge):
+		_ = c.JSON(http.StatusRequestEntityTooLarge, errorBody{
+			Error:   "payload_too_large",
+			Message: "the decoded payload exceeds the maximum allowed size",
+		})
+	case errors.Is(err, service.ErrNotFound):
+		_ = c.JSON(http.StatusNotFound, errorBody{
+			Error:   "not_found",
+			Message: "the requested resource was not found",
+		})
+	case errors.Is(err, service.ErrInvalidState):
+		_ = c.JSON(http.StatusConflict, errorBody{
+			Error:   "invalid_state",
+			Message: "the resource is not in a state that allows this operation",
+		})
+	case errors.Is(err, service.ErrAlreadyExists):
+		_ = c.JSON(http.StatusConflict, errorBody{
+			Error:   "conflict",
+			Message: "the resource already exists",
+		})
+	case errors.Is(err, service.ErrSelfRevoke):
+		_ = c.JSON(http.StatusBadRequest, errorBody{
+			Error:   "invalid_request",
+			Message: "an API key cannot revoke itself",
+		})
+	default:
+		return false
+	}
+	return true
 }

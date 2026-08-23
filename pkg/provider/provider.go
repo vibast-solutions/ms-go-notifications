@@ -4,15 +4,24 @@ package provider
 
 import "context"
 
-// OutboundEmail is the fully built message handed to a provider. The MIME
-// building fields (bodies, attachments, headers) are added in VIB-9 together
-// with pkg/mime.
+// Provider names, matching the EMAIL_PROVIDER config values.
+const (
+	NameSES = "ses"
+	NameLog = "log"
+)
+
+// OutboundEmail is the fully built message handed to a provider. Raw holds the
+// complete RFC 5322 message (built by pkg/mime); the envelope fields carry the
+// recipients so raw-mode providers (SES) address the message without parsing
+// the headers. Bcc is delivered via the envelope only — it is never present in
+// Raw's header block.
 type OutboundEmail struct {
 	MessageID string
 	From      string
 	To        []string
 	Cc        []string
 	Bcc       []string
+	ReplyTo   []string
 	Subject   string
 	Raw       []byte // complete raw MIME message
 }

@@ -9,7 +9,7 @@ Notifications microservice for Vibast: accepts email send requests over HTTP, qu
 ## Tech Stack
 
 - Go 1.26, Echo v5, MySQL 8 (raw SQL, no ORM)
-- cobra subcommands: `serve` (HTTP + in-process workers; `--no-worker` for API-only), `migrate`, `apikey` (create/list/revoke/set-domains — operator key management); `cleanup` arrives in a later story
+- cobra subcommands: `serve` (HTTP + in-process workers; `--no-worker` for API-only), `migrate`, `apikey` (create/list/revoke/set-domains — operator key management), `cleanup` (attachment/history retention, cron)
 - golang-migrate with migrations embedded via `embed.FS`
 - logrus (JSON in prod), godotenv for local dev
 - IDs are ULIDs stored as `CHAR(26)`; timestamps `DATETIME(3)` UTC
@@ -25,10 +25,10 @@ app/service/           → business logic, interfaces, domain errors
 app/dto/v1/            → request/response DTOs for API v1 (Validate())
 app/controller/v1/     → HTTP handlers for /v1 (thin)
 app/middleware/        → request id, error handler, API version, bearer auth (auth.go)
-pkg/provider/          → EmailProvider interface; ses/log impls in VIB-9
+pkg/provider/          → EmailProvider interface + ProviderError; ses/log impls; registry/ builds the configured one
 pkg/sns/               → SNS envelope parsing + signature verification (later)
-pkg/mime/              → raw MIME builder (later)
-internal/worker/       → dispatcher, processor, sweeper, cleanup (VIB-9)
+pkg/mime/              → raw RFC 5322 / MIME builder (text+html, attachments, headers)
+internal/worker/       → dispatcher (bounded pool), processor (claim→send→outcome), sweeper (re-dispatch/recover)
 migrations/            → embedded SQL migrations (001_init.up.sql, …)
 docs/                  → generated swagger (do not hand-edit)
 e2e/                   → integration tests behind the e2e build tag

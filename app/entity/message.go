@@ -43,7 +43,7 @@ type Message struct {
 	TextBody          *string
 	HTMLBody          *string
 	Headers           map[string]string
-	Tags              []string
+	Tags              map[string]string
 	Metadata          json.RawMessage
 	IdempotencyKey    *string
 	Attempts          int

@@ -207,6 +207,25 @@ func (s *APIKeyService) TouchLastUsed(ctx context.Context, id string) error {
 	return nil
 }
 
+// Get returns the key (with domains) for the given id, or ErrNotFound. Used by
+// the admin api-keys endpoints to echo a key after mutating it.
+func (s *APIKeyService) Get(ctx context.Context, id string) (*entity.APIKey, error) {
+	return s.findByID(ctx, id)
+}
+
+// NameByID returns the name of the key with the given id, or ErrNotFound when
+// it does not exist. Used to label admin message details with the owning key.
+func (s *APIKeyService) NameByID(ctx context.Context, id string) (string, error) {
+	name, err := s.repo.NameByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", fmt.Errorf("loading api key name: %w", err)
+	}
+	return name, nil
+}
+
 // findByID resolves an id through List — key counts are tiny (operator CLI
 // scale) and the repository API stays minimal.
 func (s *APIKeyService) findByID(ctx context.Context, id string) (*entity.APIKey, error) {
