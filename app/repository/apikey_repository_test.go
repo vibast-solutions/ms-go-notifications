@@ -182,3 +182,25 @@ func TestTouchLastUsed(t *testing.T) {
 	require.NoError(t, repo.TouchLastUsed(context.Background(), "01KEY", testTime))
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestNameByID(t *testing.T) {
+	repo, mock := newMockRepo(t)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT name FROM api_keys WHERE id = ?")).
+		WithArgs("01KEY").
+		WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow("ops"))
+
+	name, err := repo.NameByID(context.Background(), "01KEY")
+	require.NoError(t, err)
+	assert.Equal(t, "ops", name)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestNameByIDNotFound(t *testing.T) {
+	repo, mock := newMockRepo(t)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT name FROM api_keys WHERE id = ?")).
+		WithArgs("01NOPE").
+		WillReturnError(sql.ErrNoRows)
+
+	_, err := repo.NameByID(context.Background(), "01NOPE")
+	assert.ErrorIs(t, err, sql.ErrNoRows)
+}

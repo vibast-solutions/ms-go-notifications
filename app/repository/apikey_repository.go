@@ -121,6 +121,20 @@ func (r *APIKeyRepository) query(ctx context.Context, where string, args ...any)
 	return keys, nil
 }
 
+// NameByID returns the name of the key with the given id, for labelling the
+// admin message detail. Returns sql.ErrNoRows when the id is unknown.
+func (r *APIKeyRepository) NameByID(ctx context.Context, id string) (string, error) {
+	var name string
+	err := r.db.QueryRowContext(ctx, `SELECT name FROM api_keys WHERE id = ?`, id).Scan(&name)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", sql.ErrNoRows
+		}
+		return "", fmt.Errorf("querying api key name: %w", err)
+	}
+	return name, nil
+}
+
 // Revoke marks an active key revoked. Returns sql.ErrNoRows when the id does
 // not exist or the key is already revoked.
 func (r *APIKeyRepository) Revoke(ctx context.Context, id string, at time.Time) error {
