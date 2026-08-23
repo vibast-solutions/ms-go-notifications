@@ -12,7 +12,6 @@ import (
 const defaultSweepBatch = 100
 
 // reputationInterval is how often the reputation hook runs (Business Logic §8).
-// The evaluation itself is added in VIB-11; this story only wires the cadence.
 const reputationInterval = 60 * time.Second
 
 // dispatchGate is the slice of the dispatcher the sweeper drives: offer ids,
@@ -42,9 +41,17 @@ type Sweeper struct {
 	clock      func() time.Time
 
 	lastReputation time.Time
-	// reputation is the circuit-breaker evaluation hook. It is nil in this
-	// story and wired in VIB-11; the call site below is intentionally named.
+	// reputation is the circuit-breaker evaluation hook, wired via
+	// SetReputationEvaluator. Nil disables it (e.g. in tests that do not
+	// exercise reputation).
 	reputation func(ctx context.Context)
+}
+
+// SetReputationEvaluator wires the circuit-breaker evaluation the sweeper runs
+// at most once every reputationInterval (Business Logic §8). Call it during
+// serve wiring, before Run.
+func (s *Sweeper) SetReputationEvaluator(fn func(ctx context.Context)) {
+	s.reputation = fn
 }
 
 // NewSweeper wires a Sweeper. dispatcher is the concrete *Dispatcher in
@@ -127,7 +134,7 @@ func (s *Sweeper) drain(ctx context.Context, now time.Time) {
 }
 
 // maybeEvaluateReputation runs the reputation hook at most once per
-// reputationInterval. The evaluation is implemented in VIB-11.
+// reputationInterval.
 func (s *Sweeper) maybeEvaluateReputation(ctx context.Context, now time.Time) {
 	if !s.lastReputation.IsZero() && now.Sub(s.lastReputation) < reputationInterval {
 		return

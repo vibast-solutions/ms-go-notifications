@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/vibast-solutions/ms-go-notifications/app/entity"
@@ -79,6 +80,22 @@ type EventStore interface {
 // Implemented by repository.SuppressionRepository.
 type SuppressionWriter interface {
 	Upsert(ctx context.Context, s *entity.Suppression) error
+}
+
+// SettingsStore is the runtime-settings persistence the reputation service
+// depends on. Implemented by repository.SettingsRepository; a missing row on
+// Get surfaces as sql.ErrNoRows.
+type SettingsStore interface {
+	Get(ctx context.Context, key string) (*entity.Setting, error)
+	Upsert(ctx context.Context, key string, value json.RawMessage, now time.Time) error
+	Delete(ctx context.Context, key string) error
+}
+
+// ReputationStore computes the trailing-window rate inputs of the circuit
+// breaker. Implemented by repository.ReputationRepository.
+type ReputationStore interface {
+	CountSentRecipientsSince(ctx context.Context, since time.Time) (int, error)
+	CountHardBouncesAndComplaintsSince(ctx context.Context, since time.Time) (hardBounces, complaints int, err error)
 }
 
 // Dispatcher hands a committed, queued message id to the in-process worker

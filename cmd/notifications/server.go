@@ -27,7 +27,7 @@ const snsHTTPTimeout = 10 * time.Second
 // group with bearer auth. Routes opt into scopes with auth.Require(<scope>). The
 // dispatcher is the in-process worker pool (or a no-op in --no-worker mode); the
 // accept path hands committed message ids to it.
-func newServer(cfg *config.Config, db *sql.DB, dispatcher service.Dispatcher) *echo.Echo {
+func newServer(cfg *config.Config, db *sql.DB, dispatcher service.Dispatcher, reputation *service.ReputationService) *echo.Echo {
 	e := echo.New()
 	e.HTTPErrorHandler = appmw.ErrorHandler
 
@@ -45,7 +45,7 @@ func newServer(cfg *config.Config, db *sql.DB, dispatcher service.Dispatcher) *e
 		dtov1.Limits{MaxRecipients: cfg.MaxRecipients, MaxPayloadBytes: cfg.MaxPayloadBytes},
 	)
 
-	health := controllerv1.NewHealthController(db)
+	health := controllerv1.NewHealthController(db, reputation)
 	e.GET("/healthz", health.Healthz)
 
 	v1 := e.Group("/v1")
@@ -58,6 +58,14 @@ func newServer(cfg *config.Config, db *sql.DB, dispatcher service.Dispatcher) *e
 	whoami := controllerv1.NewWhoamiController()
 	// Any valid key may call whoami (empty scope = authentication only).
 	v1.GET("/whoami", whoami.Whoami, auth.Require(""))
+
+	// Admin group (scope admin). VIB-11 adds the reputation circuit-breaker
+	// endpoints; VIB-12 extends this group with messages/stats/suppressions/keys.
+	admin := v1.Group("/admin")
+	sendingCtl := controllerv1.NewAdminSendingController(reputation)
+	admin.GET("/sending", sendingCtl.Get, auth.Require("admin"))
+	admin.POST("/sending/pause", sendingCtl.Pause, auth.Require("admin"))
+	admin.POST("/sending/resume", sendingCtl.Resume, auth.Require("admin"))
 
 	// SES event webhook (SNS). No bearer auth — the SNS signature and the topic
 	// allow-list are the credential. Wired here (not in the worker) so ingestion

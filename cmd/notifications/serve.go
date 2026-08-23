@@ -67,6 +67,22 @@ func runServe(noWorker bool) error {
 		log.Info("connected to MySQL")
 	}
 
+	// The reputation circuit breaker is shared by the worker (the dispatcher
+	// reads the pause flag through it; the sweeper evaluates it every 60 s) and
+	// the server (admin pause/resume endpoints and the /healthz flag). It is
+	// built regardless of --no-worker so the admin API and health check work in
+	// API-only mode too.
+	reputation := service.NewReputationService(
+		repository.NewSettingsRepository(db),
+		repository.NewReputationRepository(db),
+		service.ReputationConfig{
+			BounceThreshold:    cfg.ReputationBounceThreshold,
+			ComplaintThreshold: cfg.ReputationComplaintThreshold,
+			MinSample:          cfg.ReputationMinSample,
+		},
+		log.StandardLogger(),
+	)
+
 	// Build the send machinery. In --no-worker mode the accept path still
 	// stores messages (a worker instance elsewhere drains them); the dispatcher
 	// is then a no-op and no sweeper runs.
@@ -78,14 +94,14 @@ func runServe(noWorker bool) error {
 	if noWorker {
 		log.Info("worker pool and sweeper disabled (--no-worker)")
 	} else {
-		pool, sweeper, err = buildWorker(cfg, db)
+		pool, sweeper, err = buildWorker(cfg, db, reputation)
 		if err != nil {
 			return err
 		}
 		dispatcher = pool
 	}
 
-	e := newServer(cfg, db, dispatcher)
+	e := newServer(cfg, db, dispatcher, reputation)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -114,8 +130,10 @@ func runServe(noWorker bool) error {
 }
 
 // buildWorker wires the email provider, the bounded worker pool and the sweeper
-// from config. It is only called when the worker is enabled.
-func buildWorker(cfg *config.Config, db *sql.DB) (*worker.Dispatcher, *worker.Sweeper, error) {
+// from config. It is only called when the worker is enabled. The dispatcher
+// reads the pause flag through the reputation service (cached a few seconds) and
+// the sweeper evaluates the circuit breaker every 60 s.
+func buildWorker(cfg *config.Config, db *sql.DB, reputation *service.ReputationService) (*worker.Dispatcher, *worker.Sweeper, error) {
 	prov, err := registry.New(context.Background(), registry.Options{
 		Name:                cfg.EmailProvider,
 		AWSRegion:           cfg.AWSRegion,
@@ -127,14 +145,13 @@ func buildWorker(cfg *config.Config, db *sql.DB) (*worker.Dispatcher, *worker.Sw
 
 	messages := repository.NewMessageRepository(db)
 	events := repository.NewEventRepository(db)
-	settings := repository.NewSettingsRepository(db)
 
 	pool := worker.NewDispatcher(worker.DispatcherConfig{
 		Concurrency: cfg.WorkerConcurrency,
 		BufferSize:  cfg.DispatchBuffer,
 		MaxSendRate: cfg.ProviderMaxSendRate,
 		SendTimeout: workerShutdownTimeout,
-	}, settings, log.StandardLogger())
+	}, reputation, log.StandardLogger())
 
 	processor := worker.NewProcessor(messages, events, prov, pool, worker.ProcessorConfig{
 		MaxAttempts: cfg.SendMaxAttempts,
@@ -146,6 +163,7 @@ func buildWorker(cfg *config.Config, db *sql.DB) (*worker.Dispatcher, *worker.Sw
 		Interval:       cfg.SweepInterval,
 		StaleLockAfter: cfg.StaleLockAfter,
 	}, log.StandardLogger())
+	sweeper.SetReputationEvaluator(reputation.Evaluate)
 
 	log.WithFields(log.Fields{
 		"provider":    prov.Name(),
