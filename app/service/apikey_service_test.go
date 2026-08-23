@@ -50,6 +50,15 @@ func (f *fakeKeyRepo) List(_ context.Context) ([]*entity.APIKey, error) {
 	return out, nil
 }
 
+func (f *fakeKeyRepo) NameByID(_ context.Context, id string) (string, error) {
+	for _, k := range f.keys {
+		if k.ID == id {
+			return k.Name, nil
+		}
+	}
+	return "", sql.ErrNoRows
+}
+
 func (f *fakeKeyRepo) Revoke(_ context.Context, id string, at time.Time) error {
 	for _, k := range f.keys {
 		if k.ID == id && k.Status == entity.APIKeyStatusActive {

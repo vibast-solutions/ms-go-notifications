@@ -18,6 +18,17 @@ var (
 	// ErrPayloadTooLarge is returned when the decoded payload (bodies +
 	// attachments) exceeds MAX_PAYLOAD_BYTES. Maps to 413 payload_too_large.
 	ErrPayloadTooLarge = errors.New("payload too large")
+	// ErrInvalidState is returned when an operation is not allowed in the
+	// resource's current state (e.g. retrying a message that is not failed).
+	// Maps to 409 invalid_state.
+	ErrInvalidState = errors.New("invalid state for this operation")
+	// ErrAlreadyExists is returned when creating a resource that already exists
+	// (e.g. a manual suppression for an already-suppressed address). Maps to
+	// 409 conflict.
+	ErrAlreadyExists = errors.New("resource already exists")
+	// ErrSelfRevoke is returned when an API key attempts to revoke itself. Maps
+	// to 400 invalid_request.
+	ErrSelfRevoke = errors.New("an api key cannot revoke itself")
 )
 
 // ValidationError carries field→message details for invalid input, mirroring

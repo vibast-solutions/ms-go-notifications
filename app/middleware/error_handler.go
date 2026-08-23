@@ -56,6 +56,8 @@ func ErrorHandler(c *echo.Context, err error) {
 			body.Error = "forbidden"
 		case http.StatusNotFound:
 			body.Error = "not_found"
+		case http.StatusGone:
+			body.Error = "gone"
 		case http.StatusMethodNotAllowed:
 			body.Error = "method_not_allowed"
 		case http.StatusRequestEntityTooLarge:
@@ -105,6 +107,21 @@ func handleServiceError(c *echo.Context, err error) bool {
 		_ = c.JSON(http.StatusNotFound, errorBody{
 			Error:   "not_found",
 			Message: "the requested resource was not found",
+		})
+	case errors.Is(err, service.ErrInvalidState):
+		_ = c.JSON(http.StatusConflict, errorBody{
+			Error:   "invalid_state",
+			Message: "the resource is not in a state that allows this operation",
+		})
+	case errors.Is(err, service.ErrAlreadyExists):
+		_ = c.JSON(http.StatusConflict, errorBody{
+			Error:   "conflict",
+			Message: "the resource already exists",
+		})
+	case errors.Is(err, service.ErrSelfRevoke):
+		_ = c.JSON(http.StatusBadRequest, errorBody{
+			Error:   "invalid_request",
+			Message: "an API key cannot revoke itself",
 		})
 	default:
 		return false

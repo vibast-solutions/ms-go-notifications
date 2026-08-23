@@ -15,6 +15,7 @@ import (
 type APIKeyRepository interface {
 	Create(ctx context.Context, key *entity.APIKey, domains []string) error
 	FindByPrefix(ctx context.Context, prefix string) (*entity.APIKey, error)
+	NameByID(ctx context.Context, id string) (string, error)
 	List(ctx context.Context) ([]*entity.APIKey, error)
 	Revoke(ctx context.Context, id string, at time.Time) error
 	ReplaceDomains(ctx context.Context, id string, domains []string, at time.Time) error
