@@ -1,10 +1,123 @@
 basePath: /v1
 definitions:
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyResponse'
+        type: array
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyResponse:
+    properties:
+      createdAt:
+        type: string
+      domains:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      lastUsedAt:
+        type: string
+      name:
+        type: string
+      prefix:
+        type: string
+      revokedAt:
+        type: string
+      scopes:
+        items:
+          type: string
+        type: array
+      status:
+        type: string
+    type: object
   github_com_vibast-solutions_ms-go-notifications_app_dto_v1.Address:
     properties:
       email:
         type: string
       name:
+        type: string
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminAttachmentMeta:
+    properties:
+      contentType:
+        type: string
+      filename:
+        type: string
+      id:
+        type: string
+      purged:
+        type: boolean
+      sizeBytes:
+        type: integer
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminKeyRef:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminMessageResponse:
+    properties:
+      apiKey:
+        $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminKeyRef'
+      attachments:
+        items:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminAttachmentMeta'
+        type: array
+      attempts:
+        type: integer
+      channel:
+        type: string
+      createdAt:
+        type: string
+      events:
+        items:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.EventResponse'
+        type: array
+      from:
+        $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.Address'
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      html:
+        type: string
+      id:
+        type: string
+      idempotencyKey:
+        type: string
+      lastError:
+        type: string
+      lockedAt:
+        type: string
+      lockedBy:
+        type: string
+      metadata:
+        items:
+          type: integer
+        type: array
+      provider:
+        type: string
+      providerMessageId:
+        type: string
+      recipients:
+        items:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.RecipientResponse'
+        type: array
+      sentAt:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+      tags:
+        additionalProperties:
+          type: string
+        type: object
+      text:
         type: string
     type: object
   github_com_vibast-solutions_ms-go-notifications_app_dto_v1.Attachment:
@@ -14,6 +127,53 @@ definitions:
       contentType:
         type: string
       filename:
+        type: string
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateAPIKeyRequest:
+    properties:
+      domains:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      scopes:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateAPIKeyResponse:
+    properties:
+      createdAt:
+        type: string
+      domains:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      key:
+        type: string
+      lastUsedAt:
+        type: string
+      name:
+        type: string
+      prefix:
+        type: string
+      revokedAt:
+        type: string
+      scopes:
+        items:
+          type: string
+        type: array
+      status:
+        type: string
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateSuppressionRequest:
+    properties:
+      email:
+        type: string
+      note:
         type: string
     type: object
   github_com_vibast-solutions_ms-go-notifications_app_dto_v1.EmailResponse:
@@ -85,6 +245,40 @@ definitions:
       type:
         type: string
     type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.MessageListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.MessageSummary'
+        type: array
+      nextCursor:
+        type: string
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.MessageSummary:
+    properties:
+      apiKeyName:
+        type: string
+      attempts:
+        type: integer
+      createdAt:
+        type: string
+      firstTo:
+        type: string
+      from:
+        $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.Address'
+      id:
+        type: string
+      provider:
+        type: string
+      recipientCount:
+        type: integer
+      sentAt:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+    type: object
   github_com_vibast-solutions_ms-go-notifications_app_dto_v1.PauseSendingRequest:
     properties:
       reason:
@@ -102,6 +296,13 @@ definitions:
         type: string
       type:
         type: string
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ReplaceDomainsRequest:
+    properties:
+      domains:
+        items:
+          type: string
+        type: array
     type: object
   github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendEmailRequest:
     properties:
@@ -168,6 +369,100 @@ definitions:
       since:
         type: string
     type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatBucket:
+    properties:
+      accepted:
+        type: integer
+      bouncedHard:
+        type: integer
+      bouncedSoft:
+        type: integer
+      bucket:
+        type: string
+      complained:
+        type: integer
+      delivered:
+        type: integer
+      failed:
+        type: integer
+      sent:
+        type: integer
+      suppressed:
+        type: integer
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatCounts:
+    properties:
+      accepted:
+        type: integer
+      bouncedHard:
+        type: integer
+      bouncedSoft:
+        type: integer
+      complained:
+        type: integer
+      delivered:
+        type: integer
+      failed:
+        type: integer
+      sent:
+        type: integer
+      suppressed:
+        type: integer
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatsBacklog:
+    properties:
+      queued:
+        type: integer
+      sending:
+        type: integer
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatsResponse:
+    properties:
+      backlog:
+        $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatsBacklog'
+      bounceRate:
+        type: number
+      buckets:
+        items:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatBucket'
+        type: array
+      complaintRate:
+        type: number
+      from:
+        type: string
+      granularity:
+        type: string
+      sending:
+        $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse'
+      to:
+        type: string
+      totals:
+        $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatCounts'
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionResponse'
+        type: array
+      nextCursor:
+        type: string
+    type: object
+  github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionResponse:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      expiresAt:
+        type: string
+      note:
+        type: string
+      reason:
+        type: string
+      sourceMessageId:
+        type: string
+    type: object
 info:
   contact: {}
   description: Transactional email API for the Vibast notifications service. All routes
@@ -175,6 +470,367 @@ info:
   title: Vibast Notifications API
   version: "1.0"
 paths:
+  /admin/api-keys:
+    get:
+      description: Lists every API key with its scopes, domains and status. The secret
+        is never returned.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyListResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List API keys
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Creates an API key. domains are required (≥1) when scopes include
+        "send" and must each be in ALLOWED_DOMAINS. The plaintext key is returned
+        exactly once.
+      parameters:
+      - description: Key to create
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateAPIKeyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateAPIKeyResponse'
+        "400":
+          description: validation_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an API key
+      tags:
+      - admin
+  /admin/api-keys/{id}:
+    delete:
+      description: Revokes a key. A key cannot revoke itself (400 invalid_request).
+      parameters:
+      - description: API key id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid_request
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "404":
+          description: not_found
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke an API key
+      tags:
+      - admin
+  /admin/api-keys/{id}/domains:
+    put:
+      consumes:
+      - application/json
+      description: Replaces the sender domain list of a key (≥1, each in ALLOWED_DOMAINS
+        for a send key).
+      parameters:
+      - description: API key id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New domain list
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ReplaceDomainsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyResponse'
+        "400":
+          description: validation_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "404":
+          description: not_found
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Replace a key's domains
+      tags:
+      - admin
+  /admin/messages:
+    get:
+      description: Paginated message history with filters. Cursor pagination on (createdAt,
+        id) descending; pass the returned nextCursor to fetch the next page.
+      parameters:
+      - description: Filter by status (queued, sending, sent, failed, suppressed)
+        in: query
+        name: status
+        type: string
+      - description: Filter by sender domain (exact)
+        in: query
+        name: fromDomain
+        type: string
+      - description: Filter by sender email (contains)
+        in: query
+        name: from
+        type: string
+      - description: Filter by recipient email (contains)
+        in: query
+        name: to
+        type: string
+      - description: Filter by subject (contains)
+        in: query
+        name: subject
+        type: string
+      - description: Filter by owning API key id
+        in: query
+        name: apiKeyId
+        type: string
+      - description: Filter by tag, formatted key:value
+        in: query
+        name: tag
+        type: string
+      - description: Only messages created at or after this time (RFC3339 or YYYY-MM-DD)
+        in: query
+        name: createdFrom
+        type: string
+      - description: Only messages created at or before this time (RFC3339 or YYYY-MM-DD)
+        in: query
+        name: createdTo
+        type: string
+      - description: Pagination cursor from a previous response
+        in: query
+        name: cursor
+        type: string
+      - description: Page size (1-100, default 25)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.MessageListResponse'
+        "400":
+          description: validation_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List messages
+      tags:
+      - admin
+  /admin/messages/{id}:
+    get:
+      description: 'Full message detail for debugging: the consumer view plus bodies,
+        headers, attachment metadata, owning key, lock columns and full event payloads.'
+      parameters:
+      - description: Message id (ULID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminMessageResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "404":
+          description: not_found
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get message detail
+      tags:
+      - admin
+  /admin/messages/{id}/attachments/{attachmentId}:
+    get:
+      description: Streams the attachment content with its Content-Type and a Content-Disposition
+        filename. Returns 410 gone once the content has been purged by retention.
+      parameters:
+      - description: Message id (ULID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attachment id (ULID)
+        in: path
+        name: attachmentId
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "404":
+          description: not_found
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "410":
+          description: gone
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Download an attachment
+      tags:
+      - admin
+  /admin/messages/{id}/retry:
+    post:
+      description: Re-queues a message that is currently failed (status set to queued,
+        re-dispatched). Returns 409 invalid_state when the message is in any other
+        status.
+      parameters:
+      - description: Message id (ULID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "404":
+          description: not_found
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "409":
+          description: invalid_state
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Retry a failed message
+      tags:
+      - admin
   /admin/sending:
     get:
       description: 'Returns the reputation circuit-breaker state: whether sending
@@ -269,6 +925,185 @@ paths:
       security:
       - BearerAuth: []
       summary: Resume sending
+      tags:
+      - admin
+  /admin/stats:
+    get:
+      description: Per-bucket accepted/sent/failed/suppressed/delivered/bounced/complained
+        counts over a UTC window, with totals, 24h rolling bounce/complaint rates,
+        sending state and live backlog gauges.
+      parameters:
+      - description: 'Window start (RFC3339 or YYYY-MM-DD, UTC). Default: 7 days ago'
+        in: query
+        name: from
+        type: string
+      - description: 'Window end (RFC3339 or YYYY-MM-DD, UTC). Default: now'
+        in: query
+        name: to
+        type: string
+      - description: Restrict to a sender domain
+        in: query
+        name: fromDomain
+        type: string
+      - description: 'Bucket size: day or hour (default day)'
+        in: query
+        name: granularity
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatsResponse'
+        "400":
+          description: validation_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Dashboard stats
+      tags:
+      - admin
+  /admin/suppressions:
+    get:
+      description: Paginated suppression list. Cursor pagination on (createdAt, email)
+        descending.
+      parameters:
+      - description: Filter by email (contains)
+        in: query
+        name: email
+        type: string
+      - description: Filter by reason (hard_bounce, complaint, manual)
+        in: query
+        name: reason
+        type: string
+      - description: Pagination cursor from a previous response
+        in: query
+        name: cursor
+        type: string
+      - description: Page size (1-100, default 25)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionListResponse'
+        "400":
+          description: validation_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List suppressions
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Suppresses an address (reason "manual"). Returns 409 conflict when
+        the address is already suppressed.
+      parameters:
+      - description: Address to suppress
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateSuppressionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionResponse'
+        "400":
+          description: validation_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "409":
+          description: conflict
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add a manual suppression
+      tags:
+      - admin
+  /admin/suppressions/{email}:
+    delete:
+      description: Removes a suppression by email. Returns 404 when the address is
+        not suppressed.
+      parameters:
+      - description: Suppressed email address
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "403":
+          description: forbidden
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "404":
+          description: not_found
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+        "500":
+          description: internal_error
+          schema:
+            $ref: '#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a suppression
       tags:
       - admin
   /emails:

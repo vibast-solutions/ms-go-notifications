@@ -67,6 +67,19 @@ Responses: `403` on a bad signature or a disallowed topic, `400` on a malformed 
 
 The SES configuration set, SNS topic, event destination and IAM permissions are provisioned outside this repo — see the **Notifications Technical Design, §7 infrastructure checklist** (tracked by ticket **VIB-13**). In short: create an SNS topic, attach it as the event destination of the SES configuration set named in `SES_CONFIGURATION_SET` (subscribing to at least Delivery, Bounce, Complaint, DeliveryDelay, Reject), subscribe the topic to `https://<host>/v1/webhooks/ses`, and add the topic ARN to `SNS_ALLOWED_TOPIC_ARNS`.
 
+## Admin API
+
+Operator endpoints live under `/v1/admin` and require an `admin`-scoped key. They back the admin app; a `send`-only key gets `403 forbidden`.
+
+- `GET /v1/admin/messages` — paginated message history. Filters: `status`, `fromDomain`, `from` (sender contains), `to` (recipient contains), `subject` (contains), `apiKeyId`, `tag` (`key:value`), `createdFrom`/`createdTo` (RFC3339 or `YYYY-MM-DD`). `limit` ≤ 100 (default 25). Keyset pagination on `(createdAt, id)` descending: pass the returned `nextCursor` back as `cursor`. Cursors are stable under concurrent inserts. Response: `{ items: [summary], nextCursor }`.
+- `GET /v1/admin/messages/{id}` — full detail for debugging: the consumer view plus bodies (`text`, `html`), `headers`, attachment metadata (`id, filename, contentType, sizeBytes, purged`), the owning `apiKey {id, name}`, `lockedAt`/`lockedBy` and full event payloads.
+- `GET /v1/admin/messages/{id}/attachments/{attachmentId}` — streams the attachment with its `Content-Type` and a `Content-Disposition` filename. `410 gone` once the content has been purged by retention.
+- `POST /v1/admin/messages/{id}/retry` — re-queues a **failed** message (event `retry_requested`, attributed to the calling key) and re-dispatches it → `202`. Any other status → `409 invalid_state`.
+- `GET /v1/admin/stats` — dashboard numbers over a UTC window (`from`, `to`, default last 7 days; `fromDomain`; `granularity=day|hour`). Returns a zero-filled per-bucket series of `accepted / sent / failed / suppressed / delivered / bouncedHard / bouncedSoft / complained`, `totals`, the 24 h rolling `bounceRate`/`complaintRate`, the `sending` circuit-breaker state and live `backlog` gauges (`queued`, `sending`).
+- `GET /v1/admin/sending` · `POST /v1/admin/sending/pause` · `POST /v1/admin/sending/resume` — reputation circuit-breaker state and manual control (see [Processing](#processing)).
+- `GET /v1/admin/suppressions` (filters `email` contains, `reason`; cursor/limit) · `POST /v1/admin/suppressions {email, note?}` → `201` (reason `manual`, `409 conflict` if already suppressed) · `DELETE /v1/admin/suppressions/{email}` → `204` (`404` if absent).
+- `GET /v1/admin/api-keys` (never the secret) · `POST /v1/admin/api-keys {name, scopes, domains}` → `201` with the plaintext key **once** (same validation as the CLI: `domains` required for the `send` scope, each in `ALLOWED_DOMAINS`) · `PUT /v1/admin/api-keys/{id}/domains {domains}` → `200` · `DELETE /v1/admin/api-keys/{id}` → `204`. A key cannot revoke itself (`400 invalid_request`).
+
 ## Retention
 
 `cleanup` is a cron command that keeps the database small. It runs in batches (`--batch`, default 1000) with a short pause between them, prints the totals, and exits non-zero on error. `--older-than` below `24h` is refused.
@@ -111,6 +124,8 @@ docker compose -f docker-compose.e2e.yml up -d --wait mysql-e2e   # local MySQL 
 - `GET /healthz` — liveness + DB reachability (`200 {"status":"ok","db":"ok"}` / `503`), unauthenticated
 - `GET /v1/whoami` — authenticated key's id/name/scopes/domains
 - `POST /v1/webhooks/ses` — SES event webhook (SNS), authenticated by SNS signature (see [Provider events](#provider-events-ses-via-sns))
-- `/v1/*` — versioned API (responses carry `X-API-Version: 1`), bearer-authenticated; more endpoints land in upcoming iterations
+- `POST /v1/emails` · `GET /v1/emails/{id}` — accept an email and read its status/timeline (`send` scope)
+- `/v1/admin/*` — operator API: message history/detail/attachments/retry, stats, sending control, suppressions and API-key management (`admin` scope; see [Admin API](#admin-api))
+- `/v1/*` — versioned API (responses carry `X-API-Version: 1`), bearer-authenticated
 
 Errors use a stable envelope: `{"error": "<code>", "message": "<text>", "fields": {…}}`.

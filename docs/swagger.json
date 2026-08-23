@@ -8,6 +8,554 @@
     },
     "basePath": "/v1",
     "paths": {
+        "/admin/api-keys": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lists every API key with its scopes, domains and status. The secret is never returned.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List API keys",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates an API key. domains are required (≥1) when scopes include \"send\" and must each be in ALLOWED_DOMAINS. The plaintext key is returned exactly once.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Create an API key",
+                "parameters": [
+                    {
+                        "description": "Key to create",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateAPIKeyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateAPIKeyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "validation_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/api-keys/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Revokes a key. A key cannot revoke itself (400 invalid_request).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Revoke an API key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "API key id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "not_found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/api-keys/{id}/domains": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Replaces the sender domain list of a key (≥1, each in ALLOWED_DOMAINS for a send key).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Replace a key's domains",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "API key id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New domain list",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ReplaceDomainsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "validation_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "not_found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/messages": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Paginated message history with filters. Cursor pagination on (createdAt, id) descending; pass the returned nextCursor to fetch the next page.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List messages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status (queued, sending, sent, failed, suppressed)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by sender domain (exact)",
+                        "name": "fromDomain",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by sender email (contains)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by recipient email (contains)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by subject (contains)",
+                        "name": "subject",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by owning API key id",
+                        "name": "apiKeyId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by tag, formatted key:value",
+                        "name": "tag",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only messages created at or after this time (RFC3339 or YYYY-MM-DD)",
+                        "name": "createdFrom",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only messages created at or before this time (RFC3339 or YYYY-MM-DD)",
+                        "name": "createdTo",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor from a previous response",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (1-100, default 25)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.MessageListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "validation_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/messages/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Full message detail for debugging: the consumer view plus bodies, headers, attachment metadata, owning key, lock columns and full event payloads.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get message detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message id (ULID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminMessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "not_found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/messages/{id}/attachments/{attachmentId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Streams the attachment content with its Content-Type and a Content-Disposition filename. Returns 410 gone once the content has been purged by retention.",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Download an attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message id (ULID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Attachment id (ULID)",
+                        "name": "attachmentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "not_found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "gone",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/messages/{id}/retry": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Re-queues a message that is currently failed (status set to queued, re-dispatched). Returns 409 invalid_state when the message is in any other status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Retry a failed message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message id (ULID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "not_found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "invalid_state",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/sending": {
             "get": {
                 "security": [
@@ -143,6 +691,278 @@
                     },
                     "403": {
                         "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Per-bucket accepted/sent/failed/suppressed/delivered/bounced/complained counts over a UTC window, with totals, 24h rolling bounce/complaint rates, sending state and live backlog gauges.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Dashboard stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Window start (RFC3339 or YYYY-MM-DD, UTC). Default: 7 days ago",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Window end (RFC3339 or YYYY-MM-DD, UTC). Default: now",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Restrict to a sender domain",
+                        "name": "fromDomain",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bucket size: day or hour (default day)",
+                        "name": "granularity",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "validation_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/suppressions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Paginated suppression list. Cursor pagination on (createdAt, email) descending.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List suppressions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by email (contains)",
+                        "name": "email",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by reason (hard_bounce, complaint, manual)",
+                        "name": "reason",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor from a previous response",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (1-100, default 25)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "validation_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Suppresses an address (reason \"manual\"). Returns 409 conflict when the address is already suppressed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Add a manual suppression",
+                "parameters": [
+                    {
+                        "description": "Address to suppress",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateSuppressionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "validation_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal_error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/suppressions/{email}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes a suppression by email. Returns 404 when the address is not suppressed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Remove a suppression",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Suppressed email address",
+                        "name": "email",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "not_found",
                         "schema": {
                             "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ErrorResponse"
                         }
@@ -314,6 +1134,55 @@
         }
     },
     "definitions": {
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyResponse"
+                    }
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.APIKeyResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastUsedAt": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "revokedAt": {
+                    "type": "string"
+                },
+                "scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.Address": {
             "type": "object",
             "properties": {
@@ -321,6 +1190,129 @@
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminAttachmentMeta": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "purged": {
+                    "type": "boolean"
+                },
+                "sizeBytes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminKeyRef": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminMessageResponse": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminKeyRef"
+                },
+                "attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.AdminAttachmentMeta"
+                    }
+                },
+                "attempts": {
+                    "type": "integer"
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.EventResponse"
+                    }
+                },
+                "from": {
+                    "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.Address"
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "html": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "idempotencyKey": {
+                    "type": "string"
+                },
+                "lastError": {
+                    "type": "string"
+                },
+                "lockedAt": {
+                    "type": "string"
+                },
+                "lockedBy": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "providerMessageId": {
+                    "type": "string"
+                },
+                "recipients": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.RecipientResponse"
+                    }
+                },
+                "sentAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "text": {
                     "type": "string"
                 }
             }
@@ -335,6 +1327,78 @@
                     "type": "string"
                 },
                 "filename": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateAPIKeyRequest": {
+            "type": "object",
+            "properties": {
+                "domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateAPIKeyResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "lastUsedAt": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "revokedAt": {
+                    "type": "string"
+                },
+                "scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.CreateSuppressionRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "note": {
                     "type": "string"
                 }
             }
@@ -443,6 +1507,58 @@
                 }
             }
         },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.MessageListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.MessageSummary"
+                    }
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.MessageSummary": {
+            "type": "object",
+            "properties": {
+                "apiKeyName": {
+                    "type": "string"
+                },
+                "attempts": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "firstTo": {
+                    "type": "string"
+                },
+                "from": {
+                    "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.Address"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "recipientCount": {
+                    "type": "integer"
+                },
+                "sentAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.PauseSendingRequest": {
             "type": "object",
             "properties": {
@@ -468,6 +1584,17 @@
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.ReplaceDomainsRequest": {
+            "type": "object",
+            "properties": {
+                "domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -566,6 +1693,150 @@
                     "type": "string"
                 },
                 "since": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatBucket": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "type": "integer"
+                },
+                "bouncedHard": {
+                    "type": "integer"
+                },
+                "bouncedSoft": {
+                    "type": "integer"
+                },
+                "bucket": {
+                    "type": "string"
+                },
+                "complained": {
+                    "type": "integer"
+                },
+                "delivered": {
+                    "type": "integer"
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "sent": {
+                    "type": "integer"
+                },
+                "suppressed": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatCounts": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "type": "integer"
+                },
+                "bouncedHard": {
+                    "type": "integer"
+                },
+                "bouncedSoft": {
+                    "type": "integer"
+                },
+                "complained": {
+                    "type": "integer"
+                },
+                "delivered": {
+                    "type": "integer"
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "sent": {
+                    "type": "integer"
+                },
+                "suppressed": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatsBacklog": {
+            "type": "object",
+            "properties": {
+                "queued": {
+                    "type": "integer"
+                },
+                "sending": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatsResponse": {
+            "type": "object",
+            "properties": {
+                "backlog": {
+                    "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatsBacklog"
+                },
+                "bounceRate": {
+                    "type": "number"
+                },
+                "buckets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatBucket"
+                    }
+                },
+                "complaintRate": {
+                    "type": "number"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "granularity": {
+                    "type": "string"
+                },
+                "sending": {
+                    "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SendingStateResponse"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "totals": {
+                    "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.StatCounts"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionResponse"
+                    }
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_vibast-solutions_ms-go-notifications_app_dto_v1.SuppressionResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "sourceMessageId": {
                     "type": "string"
                 }
             }
