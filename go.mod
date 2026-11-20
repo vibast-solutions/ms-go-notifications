@@ -2,6 +2,8 @@ module github.com/vibast-solutions/ms-go-notifications
 
 go 1.26.5
 
+toolchain go1.26.11
+
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/aws/aws-sdk-go-v2 v1.41.2
